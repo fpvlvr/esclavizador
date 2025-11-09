@@ -205,3 +205,30 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project-specific
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Aerich migrations (keep structure, ignore generated SQL if needed)
+# backend/migrations/models/*.sql
+
+# Local environment overrides
+.env.local
+.env.*.local
+
+# Logs directory
+logs/
+
+ai/
