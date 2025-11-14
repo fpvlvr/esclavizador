@@ -97,13 +97,12 @@ class Settings(BaseSettings):
             "apps": {
                 "models": {
                     "models": [
-                        # Models will be added in Phase 2
-                        # "app.models.organization",
-                        # "app.models.user",
-                        # "app.models.project",
-                        # "app.models.task",
-                        # "app.models.time_entry",
-                        # "app.models.tag",
+                        "app.models.organization",
+                        "app.models.user",
+                        "app.models.project",
+                        "app.models.task",
+                        "app.models.time_entry",
+                        "app.models.tag",
                         "aerich.models",
                     ],
                     "default_connection": "default",
