@@ -16,8 +16,13 @@ class Organization(Model):
     All other entities (users, projects, tasks, etc.) belong to an organization.
     """
 
-    id = fields.UUIDField(pk=True)
-    name = fields.CharField(max_length=255, null=False)
+    id = fields.UUIDField(primary_key=True)
+    name = fields.CharField(
+        max_length=255,
+        null=False,
+        unique=True,
+        description="Organization name (must be unique)"
+    )
     created_at = fields.DatetimeField(auto_now_add=True)
 
     class Meta:

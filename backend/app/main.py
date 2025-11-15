@@ -86,10 +86,13 @@ async def root() -> JSONResponse:
     )
 
 
-# This will be expanded with API routers in later phases
-# Example:
-# from app.api.v1 import auth, time_entries, projects, tasks, tags
-# app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
+# API Routers
+from app.api.v1 import auth
+
+# Include authentication router
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
+
+# Future routers will be added here:
 # app.include_router(time_entries.router, prefix="/api/v1/time-entries", tags=["Time Entries"])
 # app.include_router(projects.router, prefix="/api/v1/projects", tags=["Projects"])
 # app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["Tasks"])

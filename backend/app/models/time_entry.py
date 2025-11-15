@@ -25,22 +25,22 @@ class TimeEntry(Model):
     - end_time must be >= start_time when not null
     """
 
-    id = fields.UUIDField(pk=True)
+    id = fields.UUIDField(primary_key=True)
     user: fields.ForeignKeyRelation["User"] = fields.ForeignKeyField(
-        "models.User", related_name="time_entries", null=False, index=True
+        "models.User", related_name="time_entries", null=False, db_index=True
     )
     project: fields.ForeignKeyRelation["Project"] = fields.ForeignKeyField(
-        "models.Project", related_name="time_entries", null=False, index=True
+        "models.Project", related_name="time_entries", null=False, db_index=True
     )
     task: fields.ForeignKeyRelation["Task"] = fields.ForeignKeyField(
-        "models.Task", related_name="time_entries", null=False, index=True
+        "models.Task", related_name="time_entries", null=False, db_index=True
     )
     organization: fields.ForeignKeyRelation["Organization"] = fields.ForeignKeyField(
-        "models.Organization", related_name="time_entries", null=False, index=True
+        "models.Organization", related_name="time_entries", null=False, db_index=True
     )
     start_time = fields.DatetimeField(null=False)
     end_time = fields.DatetimeField(null=True)
-    is_running = fields.BooleanField(default=False, null=False, index=True)
+    is_running = fields.BooleanField(default=False, null=False, db_index=True)
     is_billable = fields.BooleanField(default=True, null=False)
     description = fields.TextField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)

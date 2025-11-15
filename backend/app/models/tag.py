@@ -16,10 +16,10 @@ class Tag(Model):
     Multiple tags can be assigned to a single time entry via many-to-many relationship.
     """
 
-    id = fields.UUIDField(pk=True)
+    id = fields.UUIDField(primary_key=True)
     name = fields.CharField(max_length=100, null=False)
     organization: fields.ForeignKeyRelation["Organization"] = fields.ForeignKeyField(
-        "models.Organization", related_name="tags", null=False, index=True
+        "models.Organization", related_name="tags", null=False, db_index=True
     )
     created_at = fields.DatetimeField(auto_now_add=True)
 

@@ -25,14 +25,14 @@ class User(Model):
     - slave: Regular user with limited access (own time entries only)
     """
 
-    id = fields.UUIDField(pk=True)
-    email = fields.CharField(max_length=255, unique=True, null=False, index=True)
+    id = fields.UUIDField(primary_key=True)
+    email = fields.CharField(max_length=255, unique=True, null=False, db_index=True)
     password_hash = fields.CharField(max_length=255, null=False)
     role = fields.CharEnumField(
         enum_type=UserRole, max_length=10, null=False, description="User role (master/slave)"
     )
     organization: fields.ForeignKeyRelation["Organization"] = fields.ForeignKeyField(
-        "models.Organization", related_name="users", null=False, index=True
+        "models.Organization", related_name="users", null=False, db_index=True
     )
     is_active = fields.BooleanField(default=True, null=False)
     created_at = fields.DatetimeField(auto_now_add=True)

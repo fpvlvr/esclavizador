@@ -16,11 +16,11 @@ class Task(Model):
     within a project's scope.
     """
 
-    id = fields.UUIDField(pk=True)
+    id = fields.UUIDField(primary_key=True)
     name = fields.CharField(max_length=255, null=False)
     description = fields.TextField(null=True)
     project: fields.ForeignKeyRelation["models.Project"] = fields.ForeignKeyField(
-        "models.Project", related_name="tasks", null=False, index=True
+        "models.Project", related_name="tasks", null=False, db_index=True
     )
     is_active = fields.BooleanField(default=True, null=False)
     created_at = fields.DatetimeField(auto_now_add=True)

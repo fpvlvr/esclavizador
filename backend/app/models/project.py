@@ -16,11 +16,11 @@ class Project(Model):
     Time entries are tracked against specific projects.
     """
 
-    id = fields.UUIDField(pk=True)
+    id = fields.UUIDField(primary_key=True)
     name = fields.CharField(max_length=255, null=False)
     description = fields.TextField(null=True)
     organization: fields.ForeignKeyRelation["Organization"] = fields.ForeignKeyField(
-        "models.Organization", related_name="projects", null=False, index=True
+        "models.Organization", related_name="projects", null=False, db_index=True
     )
     is_active = fields.BooleanField(default=True, null=False)
     created_at = fields.DatetimeField(auto_now_add=True)

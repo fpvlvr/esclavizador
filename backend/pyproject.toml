@@ -13,10 +13,11 @@ tortoise-orm = "0.25.1"
 aerich = "0.9.2"
 asyncpg = "0.30.0"
 pyjwt = "2.10.1"
-passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 uvicorn = {extras = ["standard"], version = "^0.34.0"}
 python-multipart = "^0.0.20"
 pydantic-settings = "^2.7.0"
+email-validator = "^2.3.0"
+pwdlib = {extras = ["argon2"], version = "^0.3.0"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
@@ -71,7 +72,18 @@ minversion = "8.0"
 addopts = "-ra -q --strict-markers"
 testpaths = ["tests"]
 asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"
+asyncio_default_fixture_loop_scope = "session"
+filterwarnings = [
+    # Ignore pytest-asyncio warnings about event loop policy (Python 3.14 compatibility issue)
+    "ignore:.*asyncio.get_event_loop_policy.*:DeprecationWarning:pytest_asyncio.*",
+    "ignore:.*asyncio.set_event_loop_policy.*:DeprecationWarning:pytest_asyncio.*",
+    # Ignore pytest-asyncio warning about custom event_loop fixture (intentional for session-scoped DB)
+    "ignore:.*event_loop fixture.*:DeprecationWarning:pytest_asyncio.*",
+    # Ignore pytest-asyncio warning about unclosed event loop (we handle cleanup properly)
+    "ignore:.*unclosed event loop.*:DeprecationWarning:pytest_asyncio.*",
+    # Ignore event loop policy warning from our conftest.py (Python 3.14 compatibility, same as above)
+    "ignore:.*asyncio.get_event_loop_policy.*:DeprecationWarning:.*conftest.*",
+]
 
 [tool.aerich]
 tortoise_orm = "app.core.database.TORTOISE_ORM"

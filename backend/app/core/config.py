@@ -103,6 +103,7 @@ class Settings(BaseSettings):
                         "app.models.task",
                         "app.models.time_entry",
                         "app.models.tag",
+                        "app.models.refresh_token",
                         "aerich.models",
                     ],
                     "default_connection": "default",
