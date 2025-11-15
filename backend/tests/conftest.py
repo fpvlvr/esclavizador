@@ -21,6 +21,8 @@ from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.models.user import User, UserRole
 from app.models.organization import Organization
+from app.models.project import Project
+from app.models.task import Task
 from app.core.security import hash_password
 
 
@@ -155,3 +157,77 @@ async def test_master(test_org):
     )
     yield user
     await user.delete()
+
+
+@pytest_asyncio.fixture
+async def test_project(test_org):
+    """
+    Create test project.
+
+    Args:
+        test_org: Organization fixture
+
+    Returns:
+        Project instance
+    """
+    project = await Project.create(
+        name="Test Project",
+        description="Test project description",
+        organization=test_org,
+        is_active=True
+    )
+    yield project
+    await project.delete()
+
+
+@pytest_asyncio.fixture
+async def test_task(test_project):
+    """
+    Create test task.
+
+    Args:
+        test_project: Project fixture
+
+    Returns:
+        Task instance
+    """
+    task = await Task.create(
+        name="Test Task",
+        description="Test task description",
+        project=test_project,
+        is_active=True
+    )
+    yield task
+    await task.delete()
+
+
+@pytest_asyncio.fixture
+async def second_org():
+    """
+    Create second organization for multi-tenant isolation tests.
+
+    Returns:
+        Organization instance with name "Second Org"
+    """
+    org = await Organization.create(name="Second Org")
+    yield org
+    await org.delete()
+
+
+@pytest_asyncio.fixture
+async def second_org_project(second_org):
+    """
+    Create project in second organization for isolation tests.
+
+    Args:
+        second_org: Second organization fixture
+
+    Returns:
+        Project instance in second_org
+    """
+    project = await Project.create(
+        name="Second Org Project",
+        organization=second_org
+    )
+    yield project
+    await project.delete()
