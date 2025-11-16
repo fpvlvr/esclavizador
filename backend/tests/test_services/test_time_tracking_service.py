@@ -321,6 +321,7 @@ class TestListEntries:
             start_date=None,
             end_date=None,
             is_running=None,
+            tag_ids=None,
             limit=50,
             offset=0
         )
@@ -357,6 +358,7 @@ class TestListEntries:
             start_date=None,
             end_date=None,
             is_running=None,
+            tag_ids=None,
             limit=50,
             offset=0
         )
@@ -378,6 +380,7 @@ class TestListEntries:
                 start_date=None,
                 end_date=None,
                 is_running=None,
+                tag_ids=None,
                 limit=50,
                 offset=0
             )

@@ -6,7 +6,7 @@ These schemas handle validation and serialization for the API layer.
 All datetime fields must be timezone-aware UTC (ISO 8601 format).
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from uuid import UUID
 from datetime import datetime, timezone
 from typing import Optional
@@ -87,8 +87,7 @@ class TimeEntryResponse(BaseModel):
     created_at: datetime = Field(..., description="Timestamp when entry was created (UTC)")
     tags: list[TagResponse] = Field(default_factory=list, description="Tags assigned to this entry")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TimeEntryList(BaseModel):
