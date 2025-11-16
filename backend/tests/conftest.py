@@ -28,15 +28,15 @@ from app.repositories.task_repo import task_repo
 
 
 @pytest.fixture(scope="session")
-def test_user_email():
-    """Email for test_user fixture."""
-    return "test@example.com"
+def test_slave_email():
+    """Email for test_slave fixture."""
+    return "slave@example.com"
 
 
 @pytest.fixture(scope="session")
-def test_user_password():
-    """Password for test_user fixture."""
-    return "TestPass123!"
+def test_slave_password():
+    """Password for test_slave fixture."""
+    return "SlavePass123!"
 
 
 @pytest.fixture(scope="session")
@@ -131,26 +131,26 @@ async def test_org():
 
 
 @pytest_asyncio.fixture
-async def test_user(test_org, test_user_email, test_user_password):
+async def test_slave(test_org, test_slave_email, test_slave_password):
     """
     Create test user with SLAVE role.
 
     Credentials:
-        email: test@example.com (from test_user_email fixture)
-        password: TestPass123! (from test_user_password fixture)
+        email: slave@example.com (from test_slave_email fixture)
+        password: SlavePass123! (from test_slave_password fixture)
         role: SLAVE
 
     Args:
         test_org: Organization fixture (OrganizationData dict)
-        test_user_email: Email fixture
-        test_user_password: Password fixture
+        test_slave_email: Email fixture
+        test_slave_password: Password fixture
 
     Returns:
         UserData dict
     """
     user = await user_repo.create_user(
-        email=test_user_email,
-        password_hash=hash_password(test_user_password),
+        email=test_slave_email,
+        password_hash=hash_password(test_slave_password),
         role=UserRole.SLAVE,
         organization_id=test_org["id"]
     )

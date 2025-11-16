@@ -9,10 +9,7 @@ Tests full HTTP request/response cycle including:
 - Response formatting
 """
 
-import pytest
-
 from app.repositories.project_repo import project_repo
-
 
 class TestCreateProject:
     """Test POST /api/v1/projects endpoint."""
@@ -46,12 +43,12 @@ class TestCreateProject:
         assert "id" in data
         assert "created_at" in data
 
-    async def test_create_project_as_slave_forbidden(self, client, test_user):
+    async def test_create_project_as_slave_forbidden(self, client, test_slave, test_slave_email, test_slave_password):
         """Test slave cannot create project (403)."""
         # Login as slave
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         token = login_response.json()["access_token"]
 
@@ -96,12 +93,12 @@ class TestCreateProject:
 class TestListProjects:
     """Test GET /api/v1/projects endpoint."""
 
-    async def test_list_projects_as_user(self, client, test_user, test_project):
+    async def test_list_projects_as_user(self, client, test_slave, test_project, test_slave_email, test_slave_password):
         """Test any user can list projects."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         token = login_response.json()["access_token"]
 
@@ -121,12 +118,12 @@ class TestListProjects:
         assert len(data["items"]) >= 1
         assert data["items"][0]["task_count"] == 0
 
-    async def test_list_projects_filter_is_active(self, client, test_user, test_org):
+    async def test_list_projects_filter_is_active(self, client, test_slave, test_org, test_slave_email, test_slave_password):
         """Test filtering by is_active."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         token = login_response.json()["access_token"]
 
@@ -158,12 +155,12 @@ class TestListProjects:
         await project_repo.delete(active["id"])
         await project_repo.delete(inactive["id"])
 
-    async def test_list_projects_pagination(self, client, test_user, test_org):
+    async def test_list_projects_pagination(self, client, test_slave, test_org, test_slave_email, test_slave_password):
         """Test pagination with limit/offset."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         token = login_response.json()["access_token"]
 
@@ -194,7 +191,7 @@ class TestListProjects:
         for p in projects:
             await project_repo.delete(p["id"])
 
-    async def test_list_projects_multi_tenant_isolation(self, client, test_user, second_org):
+    async def test_list_projects_multi_tenant_isolation(self, client, test_slave, second_org, test_slave_email, test_slave_password):
         """Test users only see their org's projects."""
         # Create project in second org via repository
         other_project = await project_repo.create(
@@ -203,10 +200,10 @@ class TestListProjects:
             org_id=second_org["id"]
         )
 
-        # Login as test_user
+        # Login as test_slave
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         token = login_response.json()["access_token"]
 
@@ -229,12 +226,12 @@ class TestListProjects:
 class TestGetProject:
     """Test GET /api/v1/projects/{id} endpoint."""
 
-    async def test_get_project_success(self, client, test_user, test_project):
+    async def test_get_project_success(self, client, test_slave, test_project, test_slave_email, test_slave_password):
         """Test getting project by ID."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         token = login_response.json()["access_token"]
 
@@ -250,12 +247,12 @@ class TestGetProject:
         assert data["name"] == "Test Project"
         assert "task_count" in data
 
-    async def test_get_project_not_found(self, client, test_user):
+    async def test_get_project_not_found(self, client, test_slave, test_slave_email, test_slave_password):
         """Test 404 when project doesn't exist."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         token = login_response.json()["access_token"]
 
@@ -268,12 +265,12 @@ class TestGetProject:
         assert response.status_code == 404
         assert response.json()["detail"] == "Project not found"
 
-    async def test_get_project_wrong_org(self, client, test_user, second_org_project):
+    async def test_get_project_wrong_org(self, client, test_slave, second_org_project, test_slave_email, test_slave_password):
         """Test 404 when accessing other org's project."""
-        # Login as test_user
+        # Login as test_slave
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         token = login_response.json()["access_token"]
 
@@ -313,12 +310,12 @@ class TestUpdateProject:
         assert data["name"] == "Updated Name"
         assert data["description"] == "Updated description"
 
-    async def test_update_project_as_slave_forbidden(self, client, test_user, test_project):
+    async def test_update_project_as_slave_forbidden(self, client, test_slave, test_project, test_slave_email, test_slave_password):
         """Test slave cannot update project (403)."""
         # Login as slave
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         token = login_response.json()["access_token"]
 
@@ -406,12 +403,12 @@ class TestDeleteProject:
         # Cleanup
         await project_repo.delete(project["id"])
 
-    async def test_delete_project_as_slave_forbidden(self, client, test_user, test_project):
+    async def test_delete_project_as_slave_forbidden(self, client, test_slave, test_project, test_slave_email, test_slave_password):
         """Test slave cannot delete project (403)."""
         # Login as slave
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         token = login_response.json()["access_token"]
 

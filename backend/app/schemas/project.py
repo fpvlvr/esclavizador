@@ -4,7 +4,7 @@ Pydantic schemas for Project entity.
 Defines request and response models for project-related API endpoints.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from uuid import UUID
 from datetime import datetime
 from typing import Optional
@@ -23,13 +23,14 @@ class ProjectCreate(BaseModel):
         description="Project description (optional)"
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "name": "Website Redesign",
                 "description": "Complete redesign of company website"
             }
         }
+    )
 
 
 class ProjectUpdate(BaseModel):
@@ -50,14 +51,15 @@ class ProjectUpdate(BaseModel):
         description="Active status (soft delete)"
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "name": "Website Redesign V2",
                 "description": "Updated description",
                 "is_active": True
             }
         }
+    )
 
 
 class ProjectResponse(BaseModel):
@@ -74,9 +76,9 @@ class ProjectResponse(BaseModel):
         description="Number of tasks in this project"
     )
 
-    class Config:
-        from_attributes = True
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "id": "123e4567-e89b-12d3-a456-426614174000",
                 "name": "Website Redesign",
@@ -87,6 +89,7 @@ class ProjectResponse(BaseModel):
                 "task_count": 5
             }
         }
+    )
 
 
 class ProjectList(BaseModel):
@@ -97,8 +100,8 @@ class ProjectList(BaseModel):
     limit: int = Field(description="Maximum items per page")
     offset: int = Field(description="Number of items skipped")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "items": [
                     {
@@ -116,3 +119,4 @@ class ProjectList(BaseModel):
                 "offset": 0
             }
         }
+    )

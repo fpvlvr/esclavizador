@@ -11,7 +11,6 @@ Tests all auth endpoints:
 Tests cover success scenarios, validation errors, and business logic errors.
 """
 
-import pytest
 from datetime import datetime, timedelta, timezone
 import jwt
 
@@ -63,11 +62,11 @@ class TestRegisterEndpoint:
         assert response.status_code == 409
         assert "Organization name already exists" in response.json()["detail"]
 
-    async def test_register_duplicate_email(self, client, test_user):
+    async def test_register_duplicate_email(self, client, test_slave, test_slave_email):
         """Test registration with existing email returns 409."""
-        # test_user already exists with email "test@example.com"
+        # test_slave already exists with email from test_slave_email fixture
         response = await client.post("/api/v1/auth/register", json={
-            "email": "test@example.com",  # Already exists
+            "email": test_slave_email,  # Already exists
             "password": "SecurePass123!",
             "role": "master",
             "organization_name": "Another Org"
@@ -164,11 +163,11 @@ class TestRegisterEndpoint:
 class TestLoginEndpoint:
     """Test POST /api/v1/auth/login endpoint."""
 
-    async def test_login_success(self, client, test_user):
+    async def test_login_success(self, client, test_slave, test_slave_email, test_slave_password):
         """Test successful login returns tokens."""
         response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
 
         assert response.status_code == 200
@@ -178,10 +177,10 @@ class TestLoginEndpoint:
         assert "refresh_token" in data
         assert data["token_type"] == "bearer"
 
-    async def test_login_wrong_password(self, client, test_user):
+    async def test_login_wrong_password(self, client, test_slave, test_slave_email, test_slave_password):
         """Test login with wrong password returns 401."""
         response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
+            "email": test_slave_email,
             "password": "WrongPassword123!"
         })
 
@@ -198,21 +197,21 @@ class TestLoginEndpoint:
         assert response.status_code == 401
         assert "Invalid credentials" in response.json()["detail"]
 
-    async def test_login_inactive_account(self, client, test_user):
+    async def test_login_inactive_account(self, client, test_slave, test_slave_email, test_slave_password):
         """Test login with inactive account returns 403."""
         # Make user inactive via repository
-        await user_repo.update(test_user["id"], {"is_active": False})
+        await user_repo.update(test_slave["id"], {"is_active": False})
 
         response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
 
         assert response.status_code == 403
         assert "Inactive account" in response.json()["detail"]
 
         # Restore active status for cleanup
-        await user_repo.update(test_user["id"], {"is_active": True})
+        await user_repo.update(test_slave["id"], {"is_active": True})
 
     async def test_login_invalid_email_format(self, client):
         """Test login with invalid email format returns 422."""
@@ -227,12 +226,12 @@ class TestLoginEndpoint:
 class TestRefreshEndpoint:
     """Test POST /api/v1/auth/refresh endpoint."""
 
-    async def test_refresh_token_success(self, client, test_user):
+    async def test_refresh_token_success(self, client, test_slave, test_slave_email, test_slave_password):
         """Test refreshing token returns new access token."""
         # Login to get refresh token
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         refresh_token = login_response.json()["refresh_token"]
 
@@ -249,14 +248,14 @@ class TestRefreshEndpoint:
         # Should NOT return new refresh token (reuse existing)
         assert "refresh_token" not in data
 
-    async def test_refresh_token_expired(self, client, test_user):
+    async def test_refresh_token_expired(self, client, test_slave, test_slave_email, test_slave_password):
         """Test refreshing expired token returns 401."""
         # Create expired refresh token
         now = datetime.now(timezone.utc)
         expire = now - timedelta(days=1)  # Expired
 
         payload = {
-            "sub": str(test_user["id"]),
+            "sub": str(test_slave["id"]),
             "type": "refresh",
             "exp": expire,
             "iat": now - timedelta(days=2),
@@ -279,12 +278,12 @@ class TestRefreshEndpoint:
 
         assert response.status_code == 401
 
-    async def test_refresh_token_revoked(self, client, test_user):
+    async def test_refresh_token_revoked(self, client, test_slave, test_slave_email, test_slave_password):
         """Test refreshing revoked token returns 401."""
         # Login to get refresh token
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         refresh_token = login_response.json()["refresh_token"]
 
@@ -304,12 +303,12 @@ class TestRefreshEndpoint:
 class TestLogoutEndpoint:
     """Test POST /api/v1/auth/logout endpoint."""
 
-    async def test_logout_success(self, client, test_user):
+    async def test_logout_success(self, client, test_slave, test_slave_email, test_slave_password):
         """Test logout revokes refresh token."""
         # Login to get refresh token
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         refresh_token = login_response.json()["refresh_token"]
 
@@ -328,12 +327,12 @@ class TestLogoutEndpoint:
 
         assert response.status_code == 401
 
-    async def test_logout_then_refresh_fails(self, client, test_user):
+    async def test_logout_then_refresh_fails(self, client, test_slave, test_slave_email, test_slave_password):
         """Test that refreshing after logout returns 401."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         refresh_token = login_response.json()["refresh_token"]
 
@@ -353,12 +352,12 @@ class TestLogoutEndpoint:
 class TestGetMeEndpoint:
     """Test GET /api/v1/auth/me endpoint."""
 
-    async def test_get_me_success(self, client, test_user):
+    async def test_get_me_success(self, client, test_slave, test_slave_email, test_slave_password):
         """Test getting current user with valid token."""
         # Login to get access token
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         access_token = login_response.json()["access_token"]
 
@@ -371,7 +370,7 @@ class TestGetMeEndpoint:
         assert response.status_code == 200
         data = response.json()
 
-        assert data["email"] == "test@example.com"
+        assert data["email"] == test_slave_email
         assert data["role"] == "slave"
         assert data["is_active"] is True
         assert "id" in data
@@ -383,17 +382,17 @@ class TestGetMeEndpoint:
 
         assert response.status_code == 403  # FastAPI HTTPBearer returns 403
 
-    async def test_get_me_expired_token(self, client, test_user):
+    async def test_get_me_expired_token(self, client, test_slave, test_slave_email, test_slave_password):
         """Test /me with expired token returns 401."""
         # Create expired access token
         now = datetime.now(timezone.utc)
         expire = now - timedelta(hours=1)  # Expired
 
         payload = {
-            "sub": str(test_user["id"]),
-            "email": test_user["email"],
-            "role": test_user["role"],
-            "org_id": str(test_user["organization_id"]),
+            "sub": str(test_slave["id"]),
+            "email": test_slave["email"],
+            "role": test_slave["role"],
+            "org_id": str(test_slave["organization_id"]),
             "exp": expire,
             "iat": now - timedelta(hours=2),
             "type": "access"
@@ -417,17 +416,17 @@ class TestGetMeEndpoint:
 
         assert response.status_code == 401
 
-    async def test_get_me_inactive_account(self, client, test_user):
+    async def test_get_me_inactive_account(self, client, test_slave, test_slave_email, test_slave_password):
         """Test /me with inactive account returns 403."""
         # Login first (while active)
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         access_token = login_response.json()["access_token"]
 
         # Make user inactive via repository
-        await user_repo.update(test_user["id"], {"is_active": False})
+        await user_repo.update(test_slave["id"], {"is_active": False})
 
         # Try to access /me
         response = await client.get(
@@ -438,7 +437,7 @@ class TestGetMeEndpoint:
         assert response.status_code == 403
 
         # Restore active status for cleanup
-        await user_repo.update(test_user["id"], {"is_active": True})
+        await user_repo.update(test_slave["id"], {"is_active": True})
 
 
 class TestRoleBasedAccess:
@@ -462,12 +461,12 @@ class TestRoleBasedAccess:
         assert response.status_code == 200
         assert response.json()["role"] == "master"
 
-    async def test_protected_route_slave_access(self, client, test_user):
+    async def test_protected_route_slave_access(self, client, test_slave, test_slave_email, test_slave_password):
         """Test slave user can access regular protected routes."""
         # Login as slave
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "test@example.com",
-            "password": "TestPass123!"
+            "email": test_slave_email,
+            "password": test_slave_password
         })
         access_token = login_response.json()["access_token"]
 

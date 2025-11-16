@@ -4,7 +4,7 @@ Pydantic schemas for Task entity.
 Defines request and response models for task-related API endpoints.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from uuid import UUID
 from datetime import datetime
 from typing import Optional
@@ -26,14 +26,15 @@ class TaskCreate(BaseModel):
         description="Project ID this task belongs to"
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "name": "Design mockups",
                 "description": "Create initial design mockups in Figma",
                 "project_id": "123e4567-e89b-12d3-a456-426614174000"
             }
         }
+    )
 
 
 class TaskUpdate(BaseModel):
@@ -54,14 +55,15 @@ class TaskUpdate(BaseModel):
         description="Active status (soft delete)"
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "name": "Design mockups V2",
                 "description": "Updated description",
                 "is_active": True
             }
         }
+    )
 
 
 class TaskResponse(BaseModel):
@@ -75,9 +77,9 @@ class TaskResponse(BaseModel):
     is_active: bool = Field(description="Active status")
     created_at: datetime = Field(description="Creation timestamp")
 
-    class Config:
-        from_attributes = True
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "id": "123e4567-e89b-12d3-a456-426614174002",
                 "name": "Design mockups",
@@ -88,6 +90,7 @@ class TaskResponse(BaseModel):
                 "created_at": "2025-01-15T12:00:00Z"
             }
         }
+    )
 
 
 class TaskList(BaseModel):
@@ -98,8 +101,8 @@ class TaskList(BaseModel):
     limit: int = Field(description="Maximum items per page")
     offset: int = Field(description="Number of items skipped")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "items": [
                     {
@@ -117,3 +120,4 @@ class TaskList(BaseModel):
                 "offset": 0
             }
         }
+    )
