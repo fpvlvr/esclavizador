@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS "users" (
 );
 CREATE INDEX IF NOT EXISTS "idx_users_email_133a6f" ON "users" ("email");
 CREATE INDEX IF NOT EXISTS "idx_users_organiz_d1d822" ON "users" ("organization_id");
-COMMENT ON COLUMN "users"."role" IS 'User role (master/slave)';
+COMMENT ON COLUMN "users"."role" IS 'User role (boss/worker)';
 COMMENT ON TABLE "users" IS 'User model for authentication and authorization.';
 CREATE TABLE IF NOT EXISTS "projects" (
     "id" UUID NOT NULL PRIMARY KEY,

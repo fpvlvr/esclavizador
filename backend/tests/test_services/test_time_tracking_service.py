@@ -157,7 +157,7 @@ class TestStopTimer:
             description=None
         )
 
-        # Slave tries to stop it
+        # Worker tries to stop it
         with pytest.raises(Exception) as exc_info:
             await time_tracking_service.stop_timer(test_worker, str(entry["id"]))
 
@@ -295,7 +295,7 @@ class TestListEntries:
             end_time=None,
             is_running=True,
             is_billable=True,
-            description="Slave entry"
+            description="Worker entry"
         )
 
         # Create entry for boss
@@ -311,7 +311,7 @@ class TestListEntries:
             description="Bossentry"
         )
 
-        # Slave lists entries
+        # Worker lists entries
         result = await time_tracking_service.list_entries(
             user=test_worker,
             project_id=None,

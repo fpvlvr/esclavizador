@@ -339,7 +339,7 @@ class TestListTimeEntries:
             end_time=None,
             is_running=True,
             is_billable=True,
-            description="Slave entry"
+            description="Worker entry"
         )
 
         # Create entry for boss

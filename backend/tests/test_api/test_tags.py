@@ -223,7 +223,7 @@ class TestGetTag:
         token = login_response.json()["access_token"]
 
         # Create tag
-        tag = await tag_repo.create("SlaveGetTest", str(test_worker["organization_id"]))
+        tag = await tag_repo.create("WorkerGetTest", str(test_worker["organization_id"]))
 
         # Get tag
         response = await client.get(
