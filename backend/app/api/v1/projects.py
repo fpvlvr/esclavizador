@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 
-from app.models.user import User
+from app.domain.entities import UserData
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse, ProjectList
 from app.services.project_service import project_service
 from app.api.deps import get_current_active_user, require_master_role
@@ -26,7 +26,7 @@ router = APIRouter()
 )
 async def create_project(
     data: ProjectCreate,
-    current_user: Annotated[User, Depends(require_master_role)]
+    current_user: Annotated[UserData, Depends(require_master_role)]
 ) -> ProjectResponse:
     """Create new project."""
     project_dict = await project_service.create_project(current_user, data)
@@ -41,7 +41,7 @@ async def create_project(
     description="List all projects in user's organization with optional filtering"
 )
 async def list_projects(
-    current_user: Annotated[User, Depends(get_current_active_user)],
+    current_user: Annotated[UserData, Depends(get_current_active_user)],
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     limit: int = Query(50, ge=1, le=100, description="Maximum items per page"),
     offset: int = Query(0, ge=0, description="Number of items to skip")
@@ -65,7 +65,7 @@ async def list_projects(
 )
 async def get_project(
     project_id: UUID,
-    current_user: Annotated[User, Depends(get_current_active_user)]
+    current_user: Annotated[UserData, Depends(get_current_active_user)]
 ) -> ProjectResponse:
     """Get project details by ID."""
     project_dict = await project_service.get_project(current_user, str(project_id))
@@ -82,7 +82,7 @@ async def get_project(
 async def update_project(
     project_id: UUID,
     data: ProjectUpdate,
-    current_user: Annotated[User, Depends(require_master_role)]
+    current_user: Annotated[UserData, Depends(require_master_role)]
 ) -> ProjectResponse:
     """Update project."""
     project_dict = await project_service.update_project(
@@ -101,7 +101,7 @@ async def update_project(
 )
 async def delete_project(
     project_id: UUID,
-    current_user: Annotated[User, Depends(require_master_role)]
+    current_user: Annotated[UserData, Depends(require_master_role)]
 ):
     """Soft delete project (sets is_active=False)."""
     await project_service.delete_project(current_user, str(project_id))

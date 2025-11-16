@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 
-from app.models.user import User
+from app.domain.entities import UserData
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse, TaskList
 from app.services.task_service import task_service
 from app.api.deps import get_current_active_user, require_master_role
@@ -26,7 +26,7 @@ router = APIRouter()
 )
 async def create_task(
     data: TaskCreate,
-    current_user: Annotated[User, Depends(require_master_role)]
+    current_user: Annotated[UserData, Depends(require_master_role)]
 ) -> TaskResponse:
     """Create new task."""
     task_dict = await task_service.create_task(current_user, data)
@@ -41,7 +41,7 @@ async def create_task(
     description="List all tasks in user's organization with optional filtering"
 )
 async def list_tasks(
-    current_user: Annotated[User, Depends(get_current_active_user)],
+    current_user: Annotated[UserData, Depends(get_current_active_user)],
     project_id: Optional[UUID] = Query(None, description="Filter by project ID"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     limit: int = Query(50, ge=1, le=100, description="Maximum items per page"),
@@ -67,7 +67,7 @@ async def list_tasks(
 )
 async def get_task(
     task_id: UUID,
-    current_user: Annotated[User, Depends(get_current_active_user)]
+    current_user: Annotated[UserData, Depends(get_current_active_user)]
 ) -> TaskResponse:
     """Get task details by ID."""
     task_dict = await task_service.get_task(current_user, str(task_id))
@@ -84,7 +84,7 @@ async def get_task(
 async def update_task(
     task_id: UUID,
     data: TaskUpdate,
-    current_user: Annotated[User, Depends(require_master_role)]
+    current_user: Annotated[UserData, Depends(require_master_role)]
 ) -> TaskResponse:
     """Update task."""
     task_dict = await task_service.update_task(
@@ -103,7 +103,7 @@ async def update_task(
 )
 async def delete_task(
     task_id: UUID,
-    current_user: Annotated[User, Depends(require_master_role)]
+    current_user: Annotated[UserData, Depends(require_master_role)]
 ):
     """Soft delete task (sets is_active=False)."""
     await task_service.delete_task(current_user, str(task_id))

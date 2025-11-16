@@ -8,9 +8,8 @@ Returns domain entity dicts (ProjectData) from repository layer.
 from typing import Optional
 from fastapi import HTTPException, status
 
-from app.models.user import User
+from app.domain.entities import UserData, ProjectData
 from app.schemas.project import ProjectCreate, ProjectUpdate
-from app.domain.entities import ProjectData
 from app.repositories.project_repo import project_repo
 
 
@@ -19,7 +18,7 @@ class ProjectService:
 
     async def create_project(
         self,
-        user: User,
+        user: UserData,
         data: ProjectCreate
     ) -> ProjectData:
         """
@@ -44,7 +43,7 @@ class ProjectService:
 
     async def list_projects(
         self,
-        user: User,
+        user: UserData,
         is_active: Optional[bool],
         limit: int,
         offset: int
@@ -79,7 +78,7 @@ class ProjectService:
 
     async def get_project(
         self,
-        user: User,
+        user: UserData,
         project_id: str
     ) -> ProjectData:
         """
@@ -108,7 +107,7 @@ class ProjectService:
 
     async def update_project(
         self,
-        user: User,
+        user: UserData,
         project_id: str,
         data: ProjectUpdate
     ) -> ProjectData:
@@ -143,7 +142,7 @@ class ProjectService:
 
     async def delete_project(
         self,
-        user: User,
+        user: UserData,
         project_id: str
     ):
         """

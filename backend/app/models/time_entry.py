@@ -33,7 +33,7 @@ class TimeEntry(Model):
         "models.Project", related_name="time_entries", null=False, db_index=True
     )
     task: fields.ForeignKeyRelation["Task"] = fields.ForeignKeyField(
-        "models.Task", related_name="time_entries", null=False, db_index=True
+        "models.Task", related_name="time_entries", null=True, db_index=True
     )
     organization: fields.ForeignKeyRelation["Organization"] = fields.ForeignKeyField(
         "models.Organization", related_name="time_entries", null=False, db_index=True

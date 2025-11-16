@@ -64,3 +64,23 @@ class RefreshTokenData(TypedDict):
     expires_at: datetime
     revoked_at: Optional[datetime]
     created_at: datetime
+
+
+class TimeEntryData(TypedDict):
+
+    id: UUID
+    user_id: UUID
+    project_id: UUID
+    task_id: Optional[UUID]
+    organization_id: UUID
+    start_time: datetime
+    end_time: Optional[datetime]
+    is_running: bool
+    is_billable: bool
+    description: Optional[str]
+    created_at: datetime
+    # Computed/extracted fields
+    user_email: str  # Extracted from user.email
+    project_name: str  # Extracted from project.name
+    task_name: Optional[str]  # Extracted from task.name if task exists
+    duration_seconds: Optional[int]  # Computed: (end_time - start_time).total_seconds()

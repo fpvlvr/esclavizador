@@ -8,9 +8,8 @@ Returns domain entity dicts (TaskData) from repository layer.
 from typing import Optional
 from fastapi import HTTPException, status
 
-from app.models.user import User
+from app.domain.entities import UserData, TaskData
 from app.schemas.task import TaskCreate, TaskUpdate
-from app.domain.entities import TaskData
 from app.repositories.task_repo import task_repo
 from app.repositories.project_repo import project_repo
 
@@ -20,7 +19,7 @@ class TaskService:
 
     async def create_task(
         self,
-        user: User,
+        user: UserData,
         data: TaskCreate
     ) -> TaskData:
         """
@@ -57,7 +56,7 @@ class TaskService:
 
     async def list_tasks(
         self,
-        user: User,
+        user: UserData,
         project_id: Optional[str],
         is_active: Optional[bool],
         limit: int,
@@ -108,7 +107,7 @@ class TaskService:
 
     async def get_task(
         self,
-        user: User,
+        user: UserData,
         task_id: str
     ) -> TaskData:
         """
@@ -137,7 +136,7 @@ class TaskService:
 
     async def update_task(
         self,
-        user: User,
+        user: UserData,
         task_id: str,
         data: TaskUpdate
     ) -> TaskData:
@@ -173,7 +172,7 @@ class TaskService:
 
     async def delete_task(
         self,
-        user: User,
+        user: UserData,
         task_id: str
     ):
         """
