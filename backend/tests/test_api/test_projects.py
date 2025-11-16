@@ -14,12 +14,12 @@ from app.repositories.project_repo import project_repo
 class TestCreateProject:
     """Test POST /api/v1/projects endpoint."""
 
-    async def test_create_project_as_master(self, client, test_master, test_master_email, test_master_password):
-        """Test master can create project."""
+    async def test_create_project_as_boss(self, client, test_boss, test_boss_email, test_boss_password):
+        """Test boss can create project."""
         # Login to get token
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_master_email,
-            "password": test_master_password
+            "email": test_boss_email,
+            "password": test_boss_password
         })
         assert login_response.status_code == 200
         token = login_response.json()["access_token"]
@@ -43,12 +43,12 @@ class TestCreateProject:
         assert "id" in data
         assert "created_at" in data
 
-    async def test_create_project_as_slave_forbidden(self, client, test_slave, test_slave_email, test_slave_password):
-        """Test slave cannot create project (403)."""
-        # Login as slave
+    async def test_create_project_as_worker_forbidden(self, client, test_worker, test_worker_email, test_worker_password):
+        """Test worker cannot create project (403)."""
+        # Login as worker
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -60,7 +60,7 @@ class TestCreateProject:
         )
 
         assert response.status_code == 403
-        assert response.json()["detail"] == "Master role required"
+        assert response.json()["detail"] == "Boss role required"
 
     async def test_create_project_no_auth(self, client):
         """Test creating project without auth (401)."""
@@ -71,12 +71,12 @@ class TestCreateProject:
 
         assert response.status_code == 403  # HTTPBearer returns 403 for missing token
 
-    async def test_create_project_validation_error(self, client, test_master):
+    async def test_create_project_validation_error(self, client, test_boss):
         """Test validation errors (422)."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "master@example.com",
-            "password": "MasterPass123!"
+            "email": "boss@example.com",
+            "password": "BossPass123!"
         })
         token = login_response.json()["access_token"]
 
@@ -93,12 +93,12 @@ class TestCreateProject:
 class TestListProjects:
     """Test GET /api/v1/projects endpoint."""
 
-    async def test_list_projects_as_user(self, client, test_slave, test_project, test_slave_email, test_slave_password):
+    async def test_list_projects_as_user(self, client, test_worker, test_project, test_worker_email, test_worker_password):
         """Test any user can list projects."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -118,12 +118,12 @@ class TestListProjects:
         assert len(data["items"]) >= 1
         assert data["items"][0]["task_count"] == 0
 
-    async def test_list_projects_filter_is_active(self, client, test_slave, test_org, test_slave_email, test_slave_password):
+    async def test_list_projects_filter_is_active(self, client, test_worker, test_org, test_worker_email, test_worker_password):
         """Test filtering by is_active."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -155,12 +155,12 @@ class TestListProjects:
         await project_repo.delete(active["id"])
         await project_repo.delete(inactive["id"])
 
-    async def test_list_projects_pagination(self, client, test_slave, test_org, test_slave_email, test_slave_password):
+    async def test_list_projects_pagination(self, client, test_worker, test_org, test_worker_email, test_worker_password):
         """Test pagination with limit/offset."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -191,7 +191,7 @@ class TestListProjects:
         for p in projects:
             await project_repo.delete(p["id"])
 
-    async def test_list_projects_multi_tenant_isolation(self, client, test_slave, second_org, test_slave_email, test_slave_password):
+    async def test_list_projects_multi_tenant_isolation(self, client, test_worker, second_org, test_worker_email, test_worker_password):
         """Test users only see their org's projects."""
         # Create project in second org via repository
         other_project = await project_repo.create(
@@ -200,10 +200,10 @@ class TestListProjects:
             org_id=second_org["id"]
         )
 
-        # Login as test_slave
+        # Login as test_worker
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -226,12 +226,12 @@ class TestListProjects:
 class TestGetProject:
     """Test GET /api/v1/projects/{id} endpoint."""
 
-    async def test_get_project_success(self, client, test_slave, test_project, test_slave_email, test_slave_password):
+    async def test_get_project_success(self, client, test_worker, test_project, test_worker_email, test_worker_password):
         """Test getting project by ID."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -247,12 +247,12 @@ class TestGetProject:
         assert data["name"] == "Test Project"
         assert "task_count" in data
 
-    async def test_get_project_not_found(self, client, test_slave, test_slave_email, test_slave_password):
+    async def test_get_project_not_found(self, client, test_worker, test_worker_email, test_worker_password):
         """Test 404 when project doesn't exist."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -265,12 +265,12 @@ class TestGetProject:
         assert response.status_code == 404
         assert response.json()["detail"] == "Project not found"
 
-    async def test_get_project_wrong_org(self, client, test_slave, second_org_project, test_slave_email, test_slave_password):
+    async def test_get_project_wrong_org(self, client, test_worker, second_org_project, test_worker_email, test_worker_password):
         """Test 404 when accessing other org's project."""
-        # Login as test_slave
+        # Login as test_worker
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -286,12 +286,12 @@ class TestGetProject:
 class TestUpdateProject:
     """Test PUT /api/v1/projects/{id} endpoint."""
 
-    async def test_update_project_as_master(self, client, test_master, test_project):
-        """Test master can update project."""
+    async def test_update_project_as_boss(self, client, test_boss, test_project):
+        """Test boss can update project."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "master@example.com",
-            "password": "MasterPass123!"
+            "email": "boss@example.com",
+            "password": "BossPass123!"
         })
         token = login_response.json()["access_token"]
 
@@ -310,12 +310,12 @@ class TestUpdateProject:
         assert data["name"] == "Updated Name"
         assert data["description"] == "Updated description"
 
-    async def test_update_project_as_slave_forbidden(self, client, test_slave, test_project, test_slave_email, test_slave_password):
-        """Test slave cannot update project (403)."""
-        # Login as slave
+    async def test_update_project_as_worker_forbidden(self, client, test_worker, test_project, test_worker_email, test_worker_password):
+        """Test worker cannot update project (403)."""
+        # Login as worker
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -328,12 +328,12 @@ class TestUpdateProject:
 
         assert response.status_code == 403
 
-    async def test_update_project_partial(self, client, test_master, test_project):
+    async def test_update_project_partial(self, client, test_boss, test_project):
         """Test partial update."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "master@example.com",
-            "password": "MasterPass123!"
+            "email": "boss@example.com",
+            "password": "BossPass123!"
         })
         token = login_response.json()["access_token"]
 
@@ -349,12 +349,12 @@ class TestUpdateProject:
         assert data["name"] == "Updated Name Only"
         assert data["description"] == "Test project description"  # Unchanged
 
-    async def test_update_project_not_found(self, client, test_master):
+    async def test_update_project_not_found(self, client, test_boss):
         """Test 404 when updating non-existent project."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "master@example.com",
-            "password": "MasterPass123!"
+            "email": "boss@example.com",
+            "password": "BossPass123!"
         })
         token = login_response.json()["access_token"]
 
@@ -371,8 +371,8 @@ class TestUpdateProject:
 class TestDeleteProject:
     """Test DELETE /api/v1/projects/{id} endpoint."""
 
-    async def test_delete_project_as_master(self, client, test_master, test_org):
-        """Test master can delete project."""
+    async def test_delete_project_as_boss(self, client, test_boss, test_org):
+        """Test boss can delete project."""
         # Create project via repository
         project = await project_repo.create(
             name="To Delete",
@@ -382,8 +382,8 @@ class TestDeleteProject:
 
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "master@example.com",
-            "password": "MasterPass123!"
+            "email": "boss@example.com",
+            "password": "BossPass123!"
         })
         token = login_response.json()["access_token"]
 
@@ -403,12 +403,12 @@ class TestDeleteProject:
         # Cleanup
         await project_repo.delete(project["id"])
 
-    async def test_delete_project_as_slave_forbidden(self, client, test_slave, test_project, test_slave_email, test_slave_password):
-        """Test slave cannot delete project (403)."""
-        # Login as slave
+    async def test_delete_project_as_worker_forbidden(self, client, test_worker, test_project, test_worker_email, test_worker_password):
+        """Test worker cannot delete project (403)."""
+        # Login as worker
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -420,12 +420,12 @@ class TestDeleteProject:
 
         assert response.status_code == 403
 
-    async def test_delete_project_not_found(self, client, test_master):
+    async def test_delete_project_not_found(self, client, test_boss):
         """Test 404 when deleting non-existent project."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "master@example.com",
-            "password": "MasterPass123!"
+            "email": "boss@example.com",
+            "password": "BossPass123!"
         })
         token = login_response.json()["access_token"]
 

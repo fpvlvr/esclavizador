@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query, status
 from app.domain.entities import UserData
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse, ProjectList
 from app.services.project_service import project_service
-from app.api.deps import get_current_active_user, require_master_role
+from app.api.deps import get_current_active_user, require_boss_role
 
 
 router = APIRouter()
@@ -22,11 +22,11 @@ router = APIRouter()
     response_model=ProjectResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create project",
-    description="Create new project (master only)"
+    description="Create new project (boss only)"
 )
 async def create_project(
     data: ProjectCreate,
-    current_user: Annotated[UserData, Depends(require_master_role)]
+    current_user: Annotated[UserData, Depends(require_boss_role)]
 ) -> ProjectResponse:
     """Create new project."""
     project_dict = await project_service.create_project(current_user, data)
@@ -77,12 +77,12 @@ async def get_project(
     response_model=ProjectResponse,
     status_code=status.HTTP_200_OK,
     summary="Update project",
-    description="Update existing project (master only)"
+    description="Update existing project (boss only)"
 )
 async def update_project(
     project_id: UUID,
     data: ProjectUpdate,
-    current_user: Annotated[UserData, Depends(require_master_role)]
+    current_user: Annotated[UserData, Depends(require_boss_role)]
 ) -> ProjectResponse:
     """Update project."""
     project_dict = await project_service.update_project(
@@ -97,11 +97,11 @@ async def update_project(
     "/{project_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete project",
-    description="Soft delete project (master only)"
+    description="Soft delete project (boss only)"
 )
 async def delete_project(
     project_id: UUID,
-    current_user: Annotated[UserData, Depends(require_master_role)]
+    current_user: Annotated[UserData, Depends(require_boss_role)]
 ):
     """Soft delete project (sets is_active=False)."""
     await project_service.delete_project(current_user, str(project_id))

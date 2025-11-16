@@ -25,7 +25,7 @@ class ProjectService:
         Create project in user's organization.
 
         Args:
-            user: Authenticated user (master role verified by dependency)
+            user: Authenticated user (boss role verified by dependency)
             data: Project creation data
 
         Returns:
@@ -115,7 +115,7 @@ class ProjectService:
         Update project (within user's org).
 
         Args:
-            user: Authenticated user (master role verified by dependency)
+            user: Authenticated user (boss role verified by dependency)
             project_id: Project UUID
             data: Update data (only provided fields will be updated)
 
@@ -149,7 +149,7 @@ class ProjectService:
         Soft delete project (within user's org).
 
         Args:
-            user: Authenticated user (master role verified by dependency)
+            user: Authenticated user (boss role verified by dependency)
             project_id: Project UUID
 
         Returns:

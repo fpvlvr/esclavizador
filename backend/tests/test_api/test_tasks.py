@@ -13,14 +13,14 @@ from app.repositories.task_repo import task_repo
 class TestCreateTask:
     """Test POST /api/v1/tasks endpoint."""
 
-    async def test_create_task_as_master(
-        self, client, test_master, test_master_email, test_master_password, test_project
+    async def test_create_task_as_boss(
+        self, client, test_boss, test_boss_email, test_boss_password, test_project
     ):
-        """Test master can create task."""
+        """Test boss can create task."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_master_email,
-            "password": test_master_password
+            "email": test_boss_email,
+            "password": test_boss_password
         })
         token = login_response.json()["access_token"]
 
@@ -43,14 +43,14 @@ class TestCreateTask:
         assert data["project_name"] == "Test Project"
         assert data["is_active"] is True
 
-    async def test_create_task_as_slave_forbidden(
-        self, client, test_slave, test_slave_email, test_slave_password, test_project
+    async def test_create_task_as_worker_forbidden(
+        self, client, test_worker, test_worker_email, test_worker_password, test_project
     ):
-        """Test slave cannot create task (403)."""
-        # Login as slave
+        """Test worker cannot create task (403)."""
+        # Login as worker
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -67,13 +67,13 @@ class TestCreateTask:
         assert response.status_code == 403
 
     async def test_create_task_invalid_project(
-        self, client, test_master, test_master_email, test_master_password
+        self, client, test_boss, test_boss_email, test_boss_password
     ):
         """Test creating task with non-existent project."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_master_email,
-            "password": test_master_password
+            "email": test_boss_email,
+            "password": test_boss_password
         })
         token = login_response.json()["access_token"]
 
@@ -95,13 +95,13 @@ class TestListTasks:
     """Test GET /api/v1/tasks endpoint."""
 
     async def test_list_tasks_as_user(
-        self, client, test_slave, test_slave_email, test_slave_password, test_task
+        self, client, test_worker, test_worker_email, test_worker_password, test_task
     ):
         """Test any user can list tasks."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -119,7 +119,7 @@ class TestListTasks:
         assert data["items"][0]["project_name"] == "Test Project"
 
     async def test_list_tasks_filter_by_project(
-        self, client, test_slave, test_slave_email, test_slave_password, test_org
+        self, client, test_worker, test_worker_email, test_worker_password, test_org
     ):
         """Test filtering tasks by project_id."""
         # Create two projects with tasks via repositories
@@ -139,8 +139,8 @@ class TestListTasks:
 
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -162,7 +162,7 @@ class TestListTasks:
         await project_repo.delete(project2["id"])
 
     async def test_list_tasks_filter_by_is_active(
-        self, client, test_slave, test_slave_email, test_slave_password, test_org, test_project
+        self, client, test_worker, test_worker_email, test_worker_password, test_org, test_project
     ):
         """Test filtering tasks by is_active."""
         # Create active and inactive tasks via repository
@@ -173,8 +173,8 @@ class TestListTasks:
 
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -197,13 +197,13 @@ class TestGetTask:
     """Test GET /api/v1/tasks/{id} endpoint."""
 
     async def test_get_task_success(
-        self, client, test_slave, test_slave_email, test_slave_password, test_task
+        self, client, test_worker, test_worker_email, test_worker_password, test_task
     ):
         """Test getting task by ID."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -220,13 +220,13 @@ class TestGetTask:
         assert "project_name" in data
 
     async def test_get_task_not_found(
-        self, client, test_slave, test_slave_email, test_slave_password
+        self, client, test_worker, test_worker_email, test_worker_password
     ):
         """Test 404 when task doesn't exist."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -242,14 +242,14 @@ class TestGetTask:
 class TestUpdateTask:
     """Test PUT /api/v1/tasks/{id} endpoint."""
 
-    async def test_update_task_as_master(
-        self, client, test_master, test_master_email, test_master_password, test_task
+    async def test_update_task_as_boss(
+        self, client, test_boss, test_boss_email, test_boss_password, test_task
     ):
-        """Test master can update task."""
+        """Test boss can update task."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_master_email,
-            "password": test_master_password
+            "email": test_boss_email,
+            "password": test_boss_password
         })
         token = login_response.json()["access_token"]
 
@@ -268,14 +268,14 @@ class TestUpdateTask:
         assert data["name"] == "Updated Name"
         assert data["description"] == "Updated description"
 
-    async def test_update_task_as_slave_forbidden(
-        self, client, test_slave, test_slave_email, test_slave_password, test_task
+    async def test_update_task_as_worker_forbidden(
+        self, client, test_worker, test_worker_email, test_worker_password, test_task
     ):
-        """Test slave cannot update task (403)."""
-        # Login as slave
+        """Test worker cannot update task (403)."""
+        # Login as worker
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -292,10 +292,10 @@ class TestUpdateTask:
 class TestDeleteTask:
     """Test DELETE /api/v1/tasks/{id} endpoint."""
 
-    async def test_delete_task_as_master(
-        self, client, test_master, test_master_email, test_master_password, test_org, test_project
+    async def test_delete_task_as_boss(
+        self, client, test_boss, test_boss_email, test_boss_password, test_org, test_project
     ):
-        """Test master can delete task."""
+        """Test boss can delete task."""
         # Create task via repository
         task = await task_repo.create(
             name="To Delete",
@@ -305,8 +305,8 @@ class TestDeleteTask:
 
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_master_email,
-            "password": test_master_password
+            "email": test_boss_email,
+            "password": test_boss_password
         })
         token = login_response.json()["access_token"]
 
@@ -326,14 +326,14 @@ class TestDeleteTask:
         # Cleanup
         await task_repo.delete(task["id"])
 
-    async def test_delete_task_as_slave_forbidden(
-        self, client, test_slave, test_slave_email, test_slave_password, test_task
+    async def test_delete_task_as_worker_forbidden(
+        self, client, test_worker, test_worker_email, test_worker_password, test_task
     ):
-        """Test slave cannot delete task (403)."""
-        # Login as slave
+        """Test worker cannot delete task (403)."""
+        # Login as worker
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 

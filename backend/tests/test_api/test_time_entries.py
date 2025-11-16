@@ -16,13 +16,13 @@ class TestStartTimer:
     """Test POST /api/v1/time-entries/start endpoint."""
 
     async def test_start_timer_success(
-        self, client, test_slave, test_slave_email, test_slave_password, test_project
+        self, client, test_worker, test_worker_email, test_worker_password, test_project
     ):
         """Test starting timer successfully."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -46,13 +46,13 @@ class TestStartTimer:
         assert data["description"] == "Working on feature"
 
     async def test_start_timer_with_task(
-        self, client, test_slave, test_slave_email, test_slave_password, test_project, test_task
+        self, client, test_worker, test_worker_email, test_worker_password, test_project, test_task
     ):
         """Test starting timer with task."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -75,13 +75,13 @@ class TestStartTimer:
         assert data["is_billable"] is False
 
     async def test_start_timer_already_running(
-        self, client, test_slave, test_slave_email, test_slave_password, test_project
+        self, client, test_worker, test_worker_email, test_worker_password, test_project
     ):
         """Test starting timer when already running (409)."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -113,15 +113,15 @@ class TestStopTimer:
     """Test POST /api/v1/time-entries/{id}/stop endpoint."""
 
     async def test_stop_timer_success(
-        self, client, test_slave, test_slave_email, test_slave_password, test_project
+        self, client, test_worker, test_worker_email, test_worker_password, test_project
     ):
         """Test stopping timer successfully."""
         # Create running timer
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_slave["organization_id"]),
+            organization_id=str(test_worker["organization_id"]),
             start_time=datetime.now(timezone.utc) - timedelta(hours=1),
             end_time=None,
             is_running=True,
@@ -131,8 +131,8 @@ class TestStopTimer:
 
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -150,15 +150,15 @@ class TestStopTimer:
         assert data["duration_seconds"] > 0
 
     async def test_stop_timer_not_owner(
-        self, client, test_slave, test_slave_email, test_slave_password, test_master, test_project
+        self, client, test_worker, test_worker_email, test_worker_password, test_boss, test_project
     ):
-        """Test slave cannot stop master's timer (403)."""
-        # Create timer for master
+        """Test worker cannot stop boss's timer (403)."""
+        # Create timer for boss
         entry = await time_entry_repo.create(
-            user_id=str(test_master["id"]),
+            user_id=str(test_boss["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_master["organization_id"]),
+            organization_id=str(test_boss["organization_id"]),
             start_time=datetime.now(timezone.utc),
             end_time=None,
             is_running=True,
@@ -166,14 +166,14 @@ class TestStopTimer:
             description=None
         )
 
-        # Login as slave
+        # Login as worker
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
-        # Try to stop master's timer
+        # Try to stop boss's timer
         response = await client.post(
             f"/api/v1/time-entries/{entry['id']}/stop",
             headers={"Authorization": f"Bearer {token}"}
@@ -181,22 +181,22 @@ class TestStopTimer:
 
         assert response.status_code == 403
 
-        await time_entry_repo.delete(entry["id"], test_master["organization_id"])
+        await time_entry_repo.delete(entry["id"], test_boss["organization_id"])
 
 
 class TestGetRunningTimer:
     """Test GET /api/v1/time-entries/running endpoint."""
 
     async def test_get_running_timer_exists(
-        self, client, test_slave, test_slave_email, test_slave_password, test_project
+        self, client, test_worker, test_worker_email, test_worker_password, test_project
     ):
         """Test getting running timer when it exists."""
         # Create running timer
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_slave["organization_id"]),
+            organization_id=str(test_worker["organization_id"]),
             start_time=datetime.now(timezone.utc),
             end_time=None,
             is_running=True,
@@ -206,8 +206,8 @@ class TestGetRunningTimer:
 
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -222,16 +222,16 @@ class TestGetRunningTimer:
         assert data["id"] == str(entry["id"])
         assert data["is_running"] is True
 
-        await time_entry_repo.delete(entry["id"], test_slave["organization_id"])
+        await time_entry_repo.delete(entry["id"], test_worker["organization_id"])
 
     async def test_get_running_timer_not_exists(
-        self, client, test_slave, test_slave_email, test_slave_password
+        self, client, test_worker, test_worker_email, test_worker_password
     ):
         """Test getting running timer when none exists (returns null)."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -249,13 +249,13 @@ class TestCreateManualEntry:
     """Test POST /api/v1/time-entries endpoint."""
 
     async def test_create_manual_entry_success(
-        self, client, test_slave, test_slave_email, test_slave_password, test_project
+        self, client, test_worker, test_worker_email, test_worker_password, test_project
     ):
         """Test creating manual entry successfully."""
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -283,15 +283,15 @@ class TestCreateManualEntry:
         assert data["description"] == "Forgot to track"
 
     async def test_create_manual_entry_overlap_blocked(
-        self, client, test_slave, test_slave_email, test_slave_password, test_project
+        self, client, test_worker, test_worker_email, test_worker_password, test_project
     ):
         """Test manual entry blocked by overlap (400)."""
         # Create existing entry
         await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_slave["organization_id"]),
+            organization_id=str(test_worker["organization_id"]),
             start_time=datetime(2025, 1, 15, 9, 0, 0, tzinfo=timezone.utc),
             end_time=datetime(2025, 1, 15, 11, 0, 0, tzinfo=timezone.utc),
             is_running=False,
@@ -301,8 +301,8 @@ class TestCreateManualEntry:
 
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -325,16 +325,16 @@ class TestCreateManualEntry:
 class TestListTimeEntries:
     """Test GET /api/v1/time-entries endpoint."""
 
-    async def test_list_entries_as_slave(
-        self, client, test_slave, test_slave_email, test_slave_password, test_master, test_project
+    async def test_list_entries_as_worker(
+        self, client, test_worker, test_worker_email, test_worker_password, test_boss, test_project
     ):
-        """Test slave only sees own entries."""
-        # Create entry for slave
-        slave_entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+        """Test worker only sees own entries."""
+        # Create entry for worker
+        worker_entry = await time_entry_repo.create(
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_slave["organization_id"]),
+            organization_id=str(test_worker["organization_id"]),
             start_time=datetime.now(timezone.utc),
             end_time=None,
             is_running=True,
@@ -342,23 +342,23 @@ class TestListTimeEntries:
             description="Slave entry"
         )
 
-        # Create entry for master
-        master_entry = await time_entry_repo.create(
-            user_id=str(test_master["id"]),
+        # Create entry for boss
+        boss_entry = await time_entry_repo.create(
+            user_id=str(test_boss["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_master["organization_id"]),
+            organization_id=str(test_boss["organization_id"]),
             start_time=datetime.now(timezone.utc),
             end_time=None,
             is_running=True,
             is_billable=True,
-            description="Master entry"
+            description="Bossentry"
         )
 
-        # Login as slave
+        # Login as worker
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -371,21 +371,21 @@ class TestListTimeEntries:
         assert response.status_code == 200
         data = response.json()
         assert data["total"] == 1
-        assert data["items"][0]["user_id"] == str(test_slave["id"])
+        assert data["items"][0]["user_id"] == str(test_worker["id"])
 
-        await time_entry_repo.delete(slave_entry["id"], test_slave["organization_id"])
-        await time_entry_repo.delete(master_entry["id"], test_master["organization_id"])
+        await time_entry_repo.delete(worker_entry["id"], test_worker["organization_id"])
+        await time_entry_repo.delete(boss_entry["id"], test_boss["organization_id"])
 
-    async def test_list_entries_as_master(
-        self, client, test_slave, test_master, test_master_email, test_master_password, test_project
+    async def test_list_entries_as_boss(
+        self, client, test_worker, test_boss, test_boss_email, test_boss_password, test_project
     ):
-        """Test master sees all entries in org."""
-        # Create entry for slave
-        slave_entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+        """Test boss sees all entries in org."""
+        # Create entry for worker
+        worker_entry = await time_entry_repo.create(
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_slave["organization_id"]),
+            organization_id=str(test_worker["organization_id"]),
             start_time=datetime.now(timezone.utc),
             end_time=None,
             is_running=True,
@@ -393,10 +393,10 @@ class TestListTimeEntries:
             description=None
         )
 
-        # Login as master
+        # Login as boss
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_master_email,
-            "password": test_master_password
+            "email": test_boss_email,
+            "password": test_boss_password
         })
         token = login_response.json()["access_token"]
 
@@ -410,18 +410,18 @@ class TestListTimeEntries:
         data = response.json()
         assert data["total"] >= 1
 
-        await time_entry_repo.delete(slave_entry["id"], test_slave["organization_id"])
+        await time_entry_repo.delete(worker_entry["id"], test_worker["organization_id"])
 
     async def test_list_entries_with_filters(
-        self, client, test_slave, test_slave_email, test_slave_password, test_project
+        self, client, test_worker, test_worker_email, test_worker_password, test_project
     ):
         """Test filtering by project, billable, running status."""
         # Create billable entry
         billable = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_slave["organization_id"]),
+            organization_id=str(test_worker["organization_id"]),
             start_time=datetime.now(timezone.utc) - timedelta(hours=2),
             end_time=datetime.now(timezone.utc),
             is_running=False,
@@ -431,10 +431,10 @@ class TestListTimeEntries:
 
         # Create non-billable entry
         non_billable = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_slave["organization_id"]),
+            organization_id=str(test_worker["organization_id"]),
             start_time=datetime.now(timezone.utc) - timedelta(hours=1),
             end_time=datetime.now(timezone.utc),
             is_running=False,
@@ -444,8 +444,8 @@ class TestListTimeEntries:
 
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -460,19 +460,19 @@ class TestListTimeEntries:
         assert data["total"] == 1
         assert data["items"][0]["is_billable"] is True
 
-        await time_entry_repo.delete(billable["id"], test_slave["organization_id"])
-        await time_entry_repo.delete(non_billable["id"], test_slave["organization_id"])
+        await time_entry_repo.delete(billable["id"], test_worker["organization_id"])
+        await time_entry_repo.delete(non_billable["id"], test_worker["organization_id"])
 
-    async def test_master_can_filter_by_user(
-        self, client, test_slave, test_master, test_master_email, test_master_password, test_project
+    async def test_boss_can_filter_by_user(
+        self, client, test_worker, test_boss, test_boss_email, test_boss_password, test_project
     ):
-        """Test master can filter by user_id."""
-        # Create entry for slave
-        slave_entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+        """Test boss can filter by user_id."""
+        # Create entry for worker
+        worker_entry = await time_entry_repo.create(
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_slave["organization_id"]),
+            organization_id=str(test_worker["organization_id"]),
             start_time=datetime.now(timezone.utc),
             end_time=None,
             is_running=True,
@@ -480,39 +480,39 @@ class TestListTimeEntries:
             description=None
         )
 
-        # Login as master
+        # Login as boss
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_master_email,
-            "password": test_master_password
+            "email": test_boss_email,
+            "password": test_boss_password
         })
         token = login_response.json()["access_token"]
 
-        # Filter by slave's user_id
+        # Filter by worker's user_id
         response = await client.get(
-            f"/api/v1/time-entries?user_id={test_slave['id']}",
+            f"/api/v1/time-entries?user_id={test_worker['id']}",
             headers={"Authorization": f"Bearer {token}"}
         )
 
         assert response.status_code == 200
         data = response.json()
         assert data["total"] >= 1
-        assert all(item["user_id"] == str(test_slave["id"]) for item in data["items"])
+        assert all(item["user_id"] == str(test_worker["id"]) for item in data["items"])
 
-        await time_entry_repo.delete(slave_entry["id"], test_slave["organization_id"])
+        await time_entry_repo.delete(worker_entry["id"], test_worker["organization_id"])
 
 
 class TestGetTimeEntry:
     """Test GET /api/v1/time-entries/{id} endpoint."""
 
     async def test_get_time_entry_success(
-        self, client, test_slave, test_slave_email, test_slave_password, test_project
+        self, client, test_worker, test_worker_email, test_worker_password, test_project
     ):
         """Test getting time entry by ID."""
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_slave["organization_id"]),
+            organization_id=str(test_worker["organization_id"]),
             start_time=datetime.now(timezone.utc),
             end_time=None,
             is_running=True,
@@ -522,8 +522,8 @@ class TestGetTimeEntry:
 
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -538,18 +538,18 @@ class TestGetTimeEntry:
         assert data["id"] == str(entry["id"])
         assert data["description"] == "Test entry"
 
-        await time_entry_repo.delete(entry["id"], test_slave["organization_id"])
+        await time_entry_repo.delete(entry["id"], test_worker["organization_id"])
 
-    async def test_slave_cannot_get_other_entry(
-        self, client, test_slave, test_slave_email, test_slave_password, test_master, test_project
+    async def test_worker_cannot_get_other_entry(
+        self, client, test_worker, test_worker_email, test_worker_password, test_boss, test_project
     ):
-        """Test slave cannot view another user's entry (403)."""
-        # Create entry for master
+        """Test worker cannot view another user's entry (403)."""
+        # Create entry for boss
         entry = await time_entry_repo.create(
-            user_id=str(test_master["id"]),
+            user_id=str(test_boss["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_master["organization_id"]),
+            organization_id=str(test_boss["organization_id"]),
             start_time=datetime.now(timezone.utc),
             end_time=None,
             is_running=True,
@@ -557,14 +557,14 @@ class TestGetTimeEntry:
             description=None
         )
 
-        # Login as slave
+        # Login as worker
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
-        # Try to get master's entry
+        # Try to get boss's entry
         response = await client.get(
             f"/api/v1/time-entries/{entry['id']}",
             headers={"Authorization": f"Bearer {token}"}
@@ -572,21 +572,21 @@ class TestGetTimeEntry:
 
         assert response.status_code == 403
 
-        await time_entry_repo.delete(entry["id"], test_master["organization_id"])
+        await time_entry_repo.delete(entry["id"], test_boss["organization_id"])
 
 
 class TestUpdateTimeEntry:
     """Test PUT /api/v1/time-entries/{id} endpoint."""
 
     async def test_update_time_entry_success(
-        self, client, test_slave, test_slave_email, test_slave_password, test_project
+        self, client, test_worker, test_worker_email, test_worker_password, test_project
     ):
         """Test updating time entry successfully."""
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_slave["organization_id"]),
+            organization_id=str(test_worker["organization_id"]),
             start_time=datetime.now(timezone.utc) - timedelta(hours=2),
             end_time=datetime.now(timezone.utc),
             is_running=False,
@@ -596,8 +596,8 @@ class TestUpdateTimeEntry:
 
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -613,18 +613,18 @@ class TestUpdateTimeEntry:
         assert data["description"] == "Updated"
         assert data["is_billable"] is False
 
-        await time_entry_repo.delete(entry["id"], test_slave["organization_id"])
+        await time_entry_repo.delete(entry["id"], test_worker["organization_id"])
 
-    async def test_master_can_update_any_entry(
-        self, client, test_slave, test_master, test_master_email, test_master_password, test_project
+    async def test_boss_can_update_any_entry(
+        self, client, test_worker, test_boss, test_boss_email, test_boss_password, test_project
     ):
-        """Test master can update any entry in org."""
-        # Create entry for slave
+        """Test boss can update any entry in org."""
+        # Create entry for worker
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_slave["organization_id"]),
+            organization_id=str(test_worker["organization_id"]),
             start_time=datetime.now(timezone.utc) - timedelta(hours=2),
             end_time=datetime.now(timezone.utc),
             is_running=False,
@@ -632,14 +632,14 @@ class TestUpdateTimeEntry:
             description=None
         )
 
-        # Login as master
+        # Login as boss
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_master_email,
-            "password": test_master_password
+            "email": test_boss_email,
+            "password": test_boss_password
         })
         token = login_response.json()["access_token"]
 
-        # Update slave's entry
+        # Update worker's entry
         response = await client.put(
             f"/api/v1/time-entries/{entry['id']}",
             json={"description": "Corrected"},
@@ -650,21 +650,21 @@ class TestUpdateTimeEntry:
         data = response.json()
         assert data["description"] == "Corrected"
 
-        await time_entry_repo.delete(entry["id"], test_slave["organization_id"])
+        await time_entry_repo.delete(entry["id"], test_worker["organization_id"])
 
 
 class TestDeleteTimeEntry:
     """Test DELETE /api/v1/time-entries/{id} endpoint."""
 
     async def test_delete_time_entry_success(
-        self, client, test_slave, test_slave_email, test_slave_password, test_project
+        self, client, test_worker, test_worker_email, test_worker_password, test_project
     ):
         """Test deleting time entry successfully."""
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_slave["organization_id"]),
+            organization_id=str(test_worker["organization_id"]),
             start_time=datetime.now(timezone.utc),
             end_time=None,
             is_running=True,
@@ -674,8 +674,8 @@ class TestDeleteTimeEntry:
 
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
@@ -687,16 +687,16 @@ class TestDeleteTimeEntry:
 
         assert response.status_code == 204
 
-    async def test_slave_cannot_delete_other_entry(
-        self, client, test_slave, test_slave_email, test_slave_password, test_master, test_project
+    async def test_worker_cannot_delete_other_entry(
+        self, client, test_worker, test_worker_email, test_worker_password, test_boss, test_project
     ):
-        """Test slave cannot delete another user's entry (403)."""
-        # Create entry for master
+        """Test worker cannot delete another user's entry (403)."""
+        # Create entry for boss
         entry = await time_entry_repo.create(
-            user_id=str(test_master["id"]),
+            user_id=str(test_boss["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_master["organization_id"]),
+            organization_id=str(test_boss["organization_id"]),
             start_time=datetime.now(timezone.utc),
             end_time=None,
             is_running=True,
@@ -704,14 +704,14 @@ class TestDeleteTimeEntry:
             description=None
         )
 
-        # Login as slave
+        # Login as worker
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_slave_email,
-            "password": test_slave_password
+            "email": test_worker_email,
+            "password": test_worker_password
         })
         token = login_response.json()["access_token"]
 
-        # Try to delete master's entry
+        # Try to delete boss's entry
         response = await client.delete(
             f"/api/v1/time-entries/{entry['id']}",
             headers={"Authorization": f"Bearer {token}"}
@@ -719,18 +719,18 @@ class TestDeleteTimeEntry:
 
         assert response.status_code == 403
 
-        await time_entry_repo.delete(entry["id"], test_master["organization_id"])
+        await time_entry_repo.delete(entry["id"], test_boss["organization_id"])
 
-    async def test_master_can_delete_any_entry(
-        self, client, test_slave, test_master, test_master_email, test_master_password, test_project
+    async def test_boss_can_delete_any_entry(
+        self, client, test_worker, test_boss, test_boss_email, test_boss_password, test_project
     ):
-        """Test master can delete any entry in org."""
-        # Create entry for slave
+        """Test boss can delete any entry in org."""
+        # Create entry for worker
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
-            organization_id=str(test_slave["organization_id"]),
+            organization_id=str(test_worker["organization_id"]),
             start_time=datetime.now(timezone.utc),
             end_time=None,
             is_running=True,
@@ -738,14 +738,14 @@ class TestDeleteTimeEntry:
             description=None
         )
 
-        # Login as master
+        # Login as boss
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": test_master_email,
-            "password": test_master_password
+            "email": test_boss_email,
+            "password": test_boss_password
         })
         token = login_response.json()["access_token"]
 
-        # Delete slave's entry
+        # Delete worker's entry
         response = await client.delete(
             f"/api/v1/time-entries/{entry['id']}",
             headers={"Authorization": f"Bearer {token}"}

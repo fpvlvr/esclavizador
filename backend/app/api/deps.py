@@ -4,7 +4,7 @@ API dependencies for authentication and authorization.
 Provides dependency injection functions for:
 - Extracting current user from JWT token
 - Checking user is active
-- Requiring specific roles (master/slave)
+- Requiring specific roles (boss/worker)
 
 ORM-free dependencies - work with UserData TypedDicts.
 """
@@ -104,27 +104,27 @@ async def get_current_active_user(
     return current_user
 
 
-async def require_master_role(
+async def require_boss_role(
     current_user: Annotated[UserData, Depends(get_current_active_user)]
 ) -> UserData:
     """
-    Require master role for endpoint access.
+    Require boss role for endpoint access.
 
     Use this dependency on endpoints that should only be
-    accessible to master users (admins).
+    accessible to boss users (admins).
 
     Args:
         current_user: Current active user dict (injected by get_current_active_user)
 
     Returns:
-        Current master user as UserData dict
+        Current boss user as UserData dict
 
     Raises:
-        HTTPException(403): User is not a master
+        HTTPException(403): User is not a boss
     """
-    if current_user["role"] != "master":
+    if current_user["role"] != "boss":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Master role required"
+            detail="Boss role required"
         )
     return current_user

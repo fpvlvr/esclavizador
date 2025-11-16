@@ -29,14 +29,14 @@ See `conftest.py` for available fixtures.
 ## Fixtures
 
 ### User Fixtures
-- `test_slave` - SLAVE role user
-- `test_master` - MASTER role user
+- `test_worker` - WORKER role user
+- `test_boss` - BOSS role user
 
 ### Credential Fixtures (Single Source of Truth)
-- `test_slave_email` → `"slave@example.com"`
-- `test_slave_password` → `"SlavePass123!"`
-- `test_master_email` → `"master@example.com"`
-- `test_master_password` → `"MasterPass123!"`
+- `test_worker_email` → `"worker@example.com"`
+- `test_worker_password` → `"WorkerPass123!"`
+- `test_boss_email` → `"boss@example.com"`
+- `test_boss_password` → `"BossPass123!"`
 
 Always use credential fixtures in tests, never hardcode.
 
@@ -71,9 +71,9 @@ See `test_api/test_projects.py:377-407` - pattern for verifying soft delete (is_
 - **Exception**: JWT encoding requires str() - see `test_api/test_auth.py:258`
 
 ### Role Values
-- UserRole enum stores lowercase: `"master"`, `"slave"`
+- UserRole enum stores lowercase: `"boss"`, `"worker"`
 - Check `app/models/user.py:11-14` for enum definition
-- Fixed bug: `app/api/deps.py:125` uses lowercase `"master"` not `"MASTER"`
+- Fixed bug: `app/api/deps.py:125` uses lowercase `"boss"` not `"BOSS"`
 
 ## Test Organization
 

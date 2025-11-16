@@ -123,7 +123,7 @@ def create_access_token(user_id: str, email: str, role: str, org_id: str) -> str
     Claims:
         sub: user_id (UUID string)
         email: user email
-        role: user role (master/slave)
+        role: user role (boss/worker)
         org_id: organization_id (UUID string)
         exp: expiration timestamp
         iat: issued at timestamp
@@ -131,7 +131,7 @@ def create_access_token(user_id: str, email: str, role: str, org_id: str) -> str
     Args:
         user_id: User UUID
         email: User email
-        role: User role (master/slave)
+        role: User role (boss/worker)
         org_id: Organization UUID
 
     Returns:

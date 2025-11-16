@@ -124,7 +124,7 @@ class TimeTrackingService:
                 detail="Time entry not found"
             )
 
-        # 2. Authorization: must be owner (even masters can only stop their own timers)
+        # 2. Authorization: must be owner (even bosses can only stop their own timers)
         if entry["user_id"] != user["id"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -267,7 +267,7 @@ class TimeTrackingService:
             project_id: Optional filter by project
             task_id: Optional filter by task
             is_billable: Optional filter by billable status
-            user_id: Optional filter by user (masters only)
+            user_id: Optional filter by user (bosses only)
             start_date: Optional filter by start date (>=)
             end_date: Optional filter by end date (<=)
             is_running: Optional filter by running status
@@ -278,24 +278,24 @@ class TimeTrackingService:
             Dict with items (list of TimeEntryData), total, limit, offset
 
         Raises:
-            HTTPException(403): Slave trying to filter by user_id
+            HTTPException(403): Worker trying to filter by user_id
             HTTPException(404): User filter specified but user not found
         """
         org_id = user["organization_id"]
         filters = {}
 
-        # Authorization: slaves can only see their own entries
-        if user["role"] == "slave":
+        # Authorization: workers can only see their own entries
+        if user["role"] == "worker":
             filters["user_id"] = str(user["id"])
 
-            # Slaves cannot filter by other users
+            # Workers cannot filter by other users
             if user_id and user_id != str(user["id"]):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="You can only view your own time entries"
                 )
         else:
-            # Masters can filter by user_id
+            # Bosses can filter by user_id
             if user_id:
                 # Validate user exists and belongs to same org
                 filter_user = await user_repo.get_by_id(user_id)
@@ -353,7 +353,7 @@ class TimeTrackingService:
 
         Raises:
             HTTPException(404): Entry not found
-            HTTPException(403): Slave trying to view another user's entry
+            HTTPException(403): Worker trying to view another user's entry
         """
         org_id = user["organization_id"]
         entry = await time_entry_repo.get_by_id(entry_id, str(org_id))
@@ -364,8 +364,8 @@ class TimeTrackingService:
                 detail="Time entry not found"
             )
 
-        # Authorization: slaves can only see their own entries
-        if user["role"] == "slave" and entry["user_id"] != user["id"]:
+        # Authorization: workers can only see their own entries
+        if user["role"] == "worker" and entry["user_id"] != user["id"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only view your own time entries"
@@ -392,7 +392,7 @@ class TimeTrackingService:
 
         Raises:
             HTTPException(404): Entry not found or project/task invalid
-            HTTPException(403): Slave trying to edit another user's entry
+            HTTPException(403): Worker trying to edit another user's entry
             HTTPException(400): Invalid update (running timer times, overlaps, etc.)
         """
         org_id = user["organization_id"]
@@ -405,8 +405,8 @@ class TimeTrackingService:
                 detail="Time entry not found"
             )
 
-        # 2. Authorization: owner or master
-        if user["role"] == "slave" and entry["user_id"] != user["id"]:
+        # 2. Authorization: owner or boss
+        if user["role"] == "worker" and entry["user_id"] != user["id"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only edit your own time entries"
@@ -509,7 +509,7 @@ class TimeTrackingService:
 
         Raises:
             HTTPException(404): Entry not found
-            HTTPException(403): Slave trying to delete another user's entry
+            HTTPException(403): Worker trying to delete another user's entry
         """
         org_id = user["organization_id"]
 
@@ -521,8 +521,8 @@ class TimeTrackingService:
                 detail="Time entry not found"
             )
 
-        # Authorization: owner or master
-        if user["role"] == "slave" and entry["user_id"] != user["id"]:
+        # Authorization: owner or boss
+        if user["role"] == "worker" and entry["user_id"] != user["id"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only delete your own time entries"

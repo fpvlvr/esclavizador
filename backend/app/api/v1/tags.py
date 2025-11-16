@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, status
 from app.domain.entities import UserData
 from app.schemas.tag import TagCreate, TagUpdate, TagResponse, TagList
 from app.services.tag_service import tag_service
-from app.api.deps import get_current_active_user, require_master_role
+from app.api.deps import get_current_active_user, require_boss_role
 
 
 router = APIRouter()
@@ -18,11 +18,11 @@ router = APIRouter()
     response_model=TagResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create tag",
-    description="Create new tag (master only)"
+    description="Create new tag (boss only)"
 )
 async def create_tag(
     data: TagCreate,
-    current_user: Annotated[UserData, Depends(require_master_role)]
+    current_user: Annotated[UserData, Depends(require_boss_role)]
 ) -> TagResponse:
     """Create new tag."""
     tag_dict = await tag_service.create_tag(current_user, data)
@@ -71,12 +71,12 @@ async def get_tag(
     response_model=TagResponse,
     status_code=status.HTTP_200_OK,
     summary="Update tag",
-    description="Update existing tag (master only)"
+    description="Update existing tag (boss only)"
 )
 async def update_tag(
     tag_id: UUID,
     data: TagUpdate,
-    current_user: Annotated[UserData, Depends(require_master_role)]
+    current_user: Annotated[UserData, Depends(require_boss_role)]
 ) -> TagResponse:
     """Update tag."""
     tag_dict = await tag_service.update_tag(
@@ -91,11 +91,11 @@ async def update_tag(
     "/{tag_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete tag",
-    description="Hard delete tag (master only, cascade removes from time entries)"
+    description="Hard delete tag (boss only, cascade removes from time entries)"
 )
 async def delete_tag(
     tag_id: UUID,
-    current_user: Annotated[UserData, Depends(require_master_role)]
+    current_user: Annotated[UserData, Depends(require_boss_role)]
 ):
     """Hard delete tag (cascade removes from time entries)."""
     await tag_service.delete_tag(current_user, str(tag_id))

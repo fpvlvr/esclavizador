@@ -21,7 +21,7 @@ class UserData(TypedDict):
     id: UUID
     email: str
     password_hash: str  # Argon2id hashed password
-    role: str  # "master" or "slave"
+    role: str  # "boss" or "worker"
     organization_id: UUID
     is_active: bool
     created_at: datetime

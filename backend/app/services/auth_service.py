@@ -56,7 +56,7 @@ class AuthService:
         Args:
             email: User email
             password: Plain text password
-            role: User role (MASTER or SLAVE)
+            role: User role (BOSS or WORKER)
             organization_name: Organization name
 
         Returns:

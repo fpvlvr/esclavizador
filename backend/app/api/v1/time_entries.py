@@ -94,14 +94,14 @@ async def create_manual_entry(
     response_model=TimeEntryList,
     status_code=status.HTTP_200_OK,
     summary="List time entries",
-    description="List time entries with optional filtering (slaves see own, masters see all)"
+    description="List time entries with optional filtering (workers see own, bosses see all)"
 )
 async def list_time_entries(
     current_user: Annotated[UserData, Depends(get_current_active_user)],
     project_id: Optional[UUID] = Query(None, description="Filter by project ID"),
     task_id: Optional[UUID] = Query(None, description="Filter by task ID"),
     is_billable: Optional[bool] = Query(None, description="Filter by billable status"),
-    user_id: Optional[UUID] = Query(None, description="Filter by user ID (masters only)"),
+    user_id: Optional[UUID] = Query(None, description="Filter by user ID (bosses only)"),
     start_date: Optional[date] = Query(None, description="Filter by start date (entries >= this date)"),
     end_date: Optional[date] = Query(None, description="Filter by end date (entries <= this date)"),
     is_running: Optional[bool] = Query(None, description="Filter by running status"),

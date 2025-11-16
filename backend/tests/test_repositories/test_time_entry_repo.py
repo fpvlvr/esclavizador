@@ -15,13 +15,13 @@ from app.repositories.task_repo import task_repo
 class TestCreateTimeEntry:
     """Test time_entry_repo.create()."""
 
-    async def test_create_time_entry_with_task(self, test_org, test_slave, test_project, test_task):
+    async def test_create_time_entry_with_task(self, test_org, test_worker, test_project, test_task):
         """Test creating time entry with all fields."""
         start_time = datetime.now(timezone.utc) - timedelta(hours=2)
         end_time = datetime.now(timezone.utc)
 
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=str(test_task["id"]),
             organization_id=str(test_org["id"]),
@@ -32,13 +32,13 @@ class TestCreateTimeEntry:
             description="Test entry"
         )
 
-        assert entry["user_id"] == test_slave["id"]
+        assert entry["user_id"] == test_worker["id"]
         assert entry["project_id"] == test_project["id"]
         assert entry["task_id"] == test_task["id"]
         assert entry["is_running"] is False
         assert entry["is_billable"] is True
         assert entry["description"] == "Test entry"
-        assert entry["user_email"] == test_slave["email"]
+        assert entry["user_email"] == test_worker["email"]
         assert entry["project_name"] == "Test Project"
         assert entry["task_name"] == "Test Task"
         assert entry["duration_seconds"] is not None
@@ -46,10 +46,10 @@ class TestCreateTimeEntry:
 
         await time_entry_repo.delete(entry["id"], test_org["id"])
 
-    async def test_create_time_entry_without_task(self, test_org, test_slave, test_project):
+    async def test_create_time_entry_without_task(self, test_org, test_worker, test_project):
         """Test creating time entry without task (project-level tracking)."""
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -67,10 +67,10 @@ class TestCreateTimeEntry:
 
         await time_entry_repo.delete(entry["id"], test_org["id"])
 
-    async def test_create_running_timer(self, test_org, test_slave, test_project):
+    async def test_create_running_timer(self, test_org, test_worker, test_project):
         """Test creating running timer (no end_time)."""
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -91,10 +91,10 @@ class TestCreateTimeEntry:
 class TestGetRunningEntry:
     """Test time_entry_repo.get_running_entry()."""
 
-    async def test_get_running_entry_exists(self, test_org, test_slave, test_project):
+    async def test_get_running_entry_exists(self, test_org, test_worker, test_project):
         """Test getting running entry when it exists."""
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -105,7 +105,7 @@ class TestGetRunningEntry:
             description=None
         )
 
-        running = await time_entry_repo.get_running_entry(test_slave["id"], test_org["id"])
+        running = await time_entry_repo.get_running_entry(test_worker["id"], test_org["id"])
 
         assert running is not None
         assert running["id"] == entry["id"]
@@ -113,20 +113,20 @@ class TestGetRunningEntry:
 
         await time_entry_repo.delete(entry["id"], test_org["id"])
 
-    async def test_get_running_entry_not_exists(self, test_org, test_slave):
+    async def test_get_running_entry_not_exists(self, test_org, test_worker):
         """Test getting running entry when none exists."""
-        running = await time_entry_repo.get_running_entry(test_slave["id"], test_org["id"])
+        running = await time_entry_repo.get_running_entry(test_worker["id"], test_org["id"])
         assert running is None
 
 
 class TestStopTimer:
     """Test time_entry_repo.stop_timer()."""
 
-    async def test_stop_timer(self, test_org, test_slave, test_project):
+    async def test_stop_timer(self, test_org, test_worker, test_project):
         """Test stopping a running timer."""
         start_time = datetime.now(timezone.utc) - timedelta(hours=1)
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -151,13 +151,13 @@ class TestStopTimer:
 class TestCheckOverlap:
     """Test time_entry_repo.check_overlap()."""
 
-    async def test_overlap_with_completed_entry(self, test_org, test_slave, test_project):
+    async def test_overlap_with_completed_entry(self, test_org, test_worker, test_project):
         """Test overlap detection with completed entry."""
         # Create existing entry: 9am-11am
         existing_start = datetime(2025, 1, 15, 9, 0, 0, tzinfo=timezone.utc)
         existing_end = datetime(2025, 1, 15, 11, 0, 0, tzinfo=timezone.utc)
         await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -170,20 +170,20 @@ class TestCheckOverlap:
 
         # Test overlap: 10am-12pm (overlaps 10am-11am)
         has_overlap = await time_entry_repo.check_overlap(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             start_time=datetime(2025, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
             end_time=datetime(2025, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
         )
 
         assert has_overlap is True
 
-    async def test_no_overlap_with_completed_entry(self, test_org, test_slave, test_project):
+    async def test_no_overlap_with_completed_entry(self, test_org, test_worker, test_project):
         """Test no overlap with completed entry."""
         # Create existing entry: 9am-11am
         existing_start = datetime(2025, 1, 15, 9, 0, 0, tzinfo=timezone.utc)
         existing_end = datetime(2025, 1, 15, 11, 0, 0, tzinfo=timezone.utc)
         await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -196,18 +196,18 @@ class TestCheckOverlap:
 
         # Test no overlap: 11am-1pm (after existing)
         has_overlap = await time_entry_repo.check_overlap(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             start_time=datetime(2025, 1, 15, 11, 0, 0, tzinfo=timezone.utc),
             end_time=datetime(2025, 1, 15, 13, 0, 0, tzinfo=timezone.utc)
         )
 
         assert has_overlap is False
 
-    async def test_overlap_with_running_timer(self, test_org, test_slave, test_project):
+    async def test_overlap_with_running_timer(self, test_org, test_worker, test_project):
         """Test overlap detection with running timer."""
         # Create running timer starting at 9am
         await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -220,17 +220,17 @@ class TestCheckOverlap:
 
         # Test overlap: 10am-11am (overlaps with running timer)
         has_overlap = await time_entry_repo.check_overlap(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             start_time=datetime(2025, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
             end_time=datetime(2025, 1, 15, 11, 0, 0, tzinfo=timezone.utc)
         )
 
         assert has_overlap is True
 
-    async def test_exclude_entry_from_overlap_check(self, test_org, test_slave, test_project):
+    async def test_exclude_entry_from_overlap_check(self, test_org, test_worker, test_project):
         """Test excluding specific entry from overlap check (for updates)."""
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -243,7 +243,7 @@ class TestCheckOverlap:
 
         # Check overlap excluding the entry itself (should not overlap)
         has_overlap = await time_entry_repo.check_overlap(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             start_time=datetime(2025, 1, 15, 9, 0, 0, tzinfo=timezone.utc),
             end_time=datetime(2025, 1, 15, 11, 0, 0, tzinfo=timezone.utc),
             exclude_entry_id=str(entry["id"])
@@ -257,11 +257,11 @@ class TestCheckOverlap:
 class TestListTimeEntries:
     """Test time_entry_repo.list()."""
 
-    async def test_list_with_filters(self, test_org, test_slave, test_master, test_project):
+    async def test_list_with_filters(self, test_org, test_worker, test_boss, test_project):
         """Test listing with various filters."""
-        # Create entries for slave
+        # Create entries for worker
         await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -272,7 +272,7 @@ class TestListTimeEntries:
             description="Billable"
         )
         await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -294,11 +294,11 @@ class TestListTimeEntries:
         assert result["total"] == 1
         assert result["items"][0]["is_billable"] is True
 
-    async def test_list_respects_org_isolation(self, test_org, test_slave, test_project, second_org):
+    async def test_list_respects_org_isolation(self, test_org, test_worker, test_project, second_org):
         """Test that list only returns entries from specified org."""
         # Create entry in test_org
         await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -323,10 +323,10 @@ class TestListTimeEntries:
 class TestUpdateTimeEntry:
     """Test time_entry_repo.update()."""
 
-    async def test_update_time_entry(self, test_org, test_slave, test_project):
+    async def test_update_time_entry(self, test_org, test_worker, test_project):
         """Test updating time entry fields."""
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -352,10 +352,10 @@ class TestUpdateTimeEntry:
 class TestDeleteTimeEntry:
     """Test time_entry_repo.delete()."""
 
-    async def test_delete_time_entry(self, test_org, test_slave, test_project):
+    async def test_delete_time_entry(self, test_org, test_worker, test_project):
         """Test hard deleting time entry."""
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -377,7 +377,7 @@ class TestDeleteTimeEntry:
 class TestTimeEntryTagOperations:
     """Test time entry tag operations."""
 
-    async def test_create_entry_with_tags(self, test_org, test_slave, test_project):
+    async def test_create_entry_with_tags(self, test_org, test_worker, test_project):
         """Test creating time entry with tags."""
         from app.repositories.tag_repo import tag_repo
 
@@ -387,7 +387,7 @@ class TestTimeEntryTagOperations:
 
         # Create entry with tags
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -408,10 +408,10 @@ class TestTimeEntryTagOperations:
         await tag_repo.delete(str(tag1["id"]), str(test_org["id"]))
         await tag_repo.delete(str(tag2["id"]), str(test_org["id"]))
 
-    async def test_create_entry_without_tags(self, test_org, test_slave, test_project):
+    async def test_create_entry_without_tags(self, test_org, test_worker, test_project):
         """Test creating time entry without tags."""
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -427,11 +427,11 @@ class TestTimeEntryTagOperations:
 
         await time_entry_repo.delete(str(entry["id"]), test_org["id"])
 
-    async def test_validate_tags_raises_on_invalid_tag(self, test_org, test_slave, test_project):
+    async def test_validate_tags_raises_on_invalid_tag(self, test_org, test_worker, test_project):
         """Test that creating entry with invalid tag raises ValueError."""
         with pytest.raises(ValueError, match="Tags not found"):
             await time_entry_repo.create(
-                user_id=str(test_slave["id"]),
+                user_id=str(test_worker["id"]),
                 project_id=str(test_project["id"]),
                 task_id=None,
                 organization_id=str(test_org["id"]),
@@ -443,7 +443,7 @@ class TestTimeEntryTagOperations:
                 tag_ids=["00000000-0000-0000-0000-000000000000"]
             )
 
-    async def test_update_entry_tags(self, test_org, test_slave, test_project):
+    async def test_update_entry_tags(self, test_org, test_worker, test_project):
         """Test updating time entry tags (replace all)."""
         from app.repositories.tag_repo import tag_repo
 
@@ -454,7 +454,7 @@ class TestTimeEntryTagOperations:
 
         # Create entry with tag1 and tag2
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -481,7 +481,7 @@ class TestTimeEntryTagOperations:
         await tag_repo.delete(str(tag2["id"]), str(test_org["id"]))
         await tag_repo.delete(str(tag3["id"]), str(test_org["id"]))
 
-    async def test_update_entry_remove_all_tags(self, test_org, test_slave, test_project):
+    async def test_update_entry_remove_all_tags(self, test_org, test_worker, test_project):
         """Test removing all tags from entry (empty list)."""
         from app.repositories.tag_repo import tag_repo
 
@@ -489,7 +489,7 @@ class TestTimeEntryTagOperations:
 
         # Create entry with tag
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -513,7 +513,7 @@ class TestTimeEntryTagOperations:
         await time_entry_repo.delete(str(entry["id"]), test_org["id"])
         await tag_repo.delete(str(tag["id"]), str(test_org["id"]))
 
-    async def test_update_entry_tags_none_leaves_unchanged(self, test_org, test_slave, test_project):
+    async def test_update_entry_tags_none_leaves_unchanged(self, test_org, test_worker, test_project):
         """Test that tag_ids=None (not provided) leaves tags unchanged."""
         from app.repositories.tag_repo import tag_repo
 
@@ -521,7 +521,7 @@ class TestTimeEntryTagOperations:
 
         # Create entry with tag
         entry = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -547,7 +547,7 @@ class TestTimeEntryTagOperations:
         await time_entry_repo.delete(str(entry["id"]), test_org["id"])
         await tag_repo.delete(str(tag["id"]), str(test_org["id"]))
 
-    async def test_list_entries_filter_by_tags(self, test_org, test_slave, test_project):
+    async def test_list_entries_filter_by_tags(self, test_org, test_worker, test_project):
         """Test filtering time entries by tag IDs (OR logic)."""
         from app.repositories.tag_repo import tag_repo
 
@@ -557,7 +557,7 @@ class TestTimeEntryTagOperations:
 
         # Create entries
         entry1 = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -570,7 +570,7 @@ class TestTimeEntryTagOperations:
         )
 
         entry2 = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),
@@ -583,7 +583,7 @@ class TestTimeEntryTagOperations:
         )
 
         entry3 = await time_entry_repo.create(
-            user_id=str(test_slave["id"]),
+            user_id=str(test_worker["id"]),
             project_id=str(test_project["id"]),
             task_id=None,
             organization_id=str(test_org["id"]),

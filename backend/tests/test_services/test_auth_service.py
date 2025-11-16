@@ -123,7 +123,7 @@ class TestJWTTokenFunctions:
         """Test access token generation with correct claims."""
         user_id = "550e8400-e29b-41d4-a716-446655440000"
         email = "test@example.com"
-        role = "master"
+        role = "boss"
         org_id = "660e8400-e29b-41d4-a716-446655440000"
 
         token = create_access_token(user_id, email, role, org_id)
@@ -142,13 +142,13 @@ class TestJWTTokenFunctions:
     def test_decode_access_token(self):
         """Test decoding valid access token."""
         user_id = "550e8400-e29b-41d4-a716-446655440000"
-        token = create_access_token(user_id, "test@example.com", "slave", "org-id")
+        token = create_access_token(user_id, "test@example.com", "worker", "org-id")
 
         payload = decode_token(token)
 
         assert payload["sub"] == user_id
         assert payload["email"] == "test@example.com"
-        assert payload["role"] == "slave"
+        assert payload["role"] == "worker"
         assert "exp" in payload
         assert "iat" in payload
 
@@ -162,7 +162,7 @@ class TestJWTTokenFunctions:
         payload = {
             "sub": user_id,
             "email": "test@example.com",
-            "role": "master",
+            "role": "boss",
             "org_id": "org-id",
             "exp": expire,
             "iat": now - timedelta(hours=2),
@@ -213,13 +213,13 @@ class TestAuthService:
         user = await auth_service.register(
             email="newuser@example.com",
             password="NewPass123!",
-            role=UserRole.MASTER,
+            role=UserRole.BOSS,
             organization_name="New Test Org"
         )
 
         assert user is not None
         assert user["email"] == "newuser@example.com"
-        assert user["role"] == "master"
+        assert user["role"] == "boss"
         assert user["is_active"] is True
 
         # Verify organization was created
@@ -241,7 +241,7 @@ class TestAuthService:
             await auth_service.register(
                 email="newuser@example.com",
                 password="NewPass123!",
-                role=UserRole.MASTER,
+                role=UserRole.BOSS,
                 organization_name="Existing Org"  # Already exists
             )
 
@@ -258,7 +258,7 @@ class TestAuthService:
         existing_user = await user_repo.create_user(
             email="existing@example.com",
             password_hash=hash_password("Password123!"),
-            role=UserRole.SLAVE,
+            role=UserRole.WORKER,
             organization_id=str(org["id"])
         )
 
@@ -267,7 +267,7 @@ class TestAuthService:
             await auth_service.register(
                 email="existing@example.com",  # Already exists
                 password="NewPass123!",
-                role=UserRole.MASTER,
+                role=UserRole.BOSS,
                 organization_name="Another Org"
             )
 
@@ -285,7 +285,7 @@ class TestAuthService:
         user = await user_repo.create_user(
             email="authuser@example.com",
             password_hash=hash_password(password),
-            role=UserRole.MASTER,
+            role=UserRole.BOSS,
             organization_id=test_org["id"]
         )
 
@@ -304,7 +304,7 @@ class TestAuthService:
         payload = decode_token(access_token)
         assert payload["sub"] == str(user["id"])
         assert payload["email"] == "authuser@example.com"
-        assert payload["role"] == "master"
+        assert payload["role"] == "boss"
 
         # Cleanup
         await user_repo.delete(user["id"])
@@ -314,7 +314,7 @@ class TestAuthService:
         user = await user_repo.create_user(
             email="wrongpass@example.com",
             password_hash=hash_password("CorrectPass123!"),
-            role=UserRole.SLAVE,
+            role=UserRole.WORKER,
             organization_id=test_org["id"]
         )
 
@@ -336,7 +336,7 @@ class TestAuthService:
         user = await user_repo.create_user(
             email="inactive@example.com",
             password_hash=hash_password("Password123!"),
-            role=UserRole.SLAVE,
+            role=UserRole.WORKER,
             organization_id=test_org["id"]
         )
         # Mark user as inactive
@@ -361,7 +361,7 @@ class TestAuthService:
         user = await user_repo.create_user(
             email="refresh@example.com",
             password_hash=hash_password("Password123!"),
-            role=UserRole.MASTER,
+            role=UserRole.BOSS,
             organization_id=test_org["id"]
         )
 
@@ -390,7 +390,7 @@ class TestAuthService:
         user = await user_repo.create_user(
             email="revoked@example.com",
             password_hash=hash_password("Password123!"),
-            role=UserRole.SLAVE,
+            role=UserRole.WORKER,
             organization_id=test_org["id"]
         )
 
@@ -419,7 +419,7 @@ class TestAuthService:
         user = await user_repo.create_user(
             email="logout@example.com",
             password_hash=hash_password("Password123!"),
-            role=UserRole.MASTER,
+            role=UserRole.BOSS,
             organization_id=test_org["id"]
         )
 

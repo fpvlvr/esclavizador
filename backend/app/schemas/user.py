@@ -18,7 +18,7 @@ class UserResponse(BaseModel):
 
     id: UUID = Field(description="User unique identifier")
     email: EmailStr = Field(description="User email address")
-    role: UserRole = Field(description="User role (master or slave)")
+    role: UserRole = Field(description="User role (boss or worker)")
     organization_id: UUID = Field(description="Organization ID")
     is_active: bool = Field(description="Account active status")
     created_at: datetime = Field(description="Account creation timestamp")
@@ -29,7 +29,7 @@ class UserResponse(BaseModel):
             "example": {
                 "id": "123e4567-e89b-12d3-a456-426614174000",
                 "email": "user@example.com",
-                "role": "slave",
+                "role": "worker",
                 "organization_id": "123e4567-e89b-12d3-a456-426614174001",
                 "is_active": True,
                 "created_at": "2025-01-09T12:00:00Z"

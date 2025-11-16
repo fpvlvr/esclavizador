@@ -60,7 +60,7 @@ class UserRepository(BaseRepository[User, UserData]):
         Args:
             email: User email
             password_hash: Hashed password (Argon2id)
-            role: User role (MASTER or SLAVE)
+            role: User role (BOSS or WORKER)
             organization_id: Organization UUID
 
         Returns:

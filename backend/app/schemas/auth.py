@@ -17,7 +17,7 @@ class RegisterRequest(BaseModel):
         max_length=128,
         description="User password (8-128 chars, uppercase, lowercase, digit, special char required)"
     )
-    role: UserRole = Field(description="User role (master or slave)")
+    role: UserRole = Field(description="User role (boss or worker)")
     organization_name: str = Field(
         min_length=2,
         max_length=255,
@@ -47,7 +47,7 @@ class RegisterRequest(BaseModel):
             "example": {
                 "email": "user@example.com",
                 "password": "SecurePass123!",
-                "role": "slave",
+                "role": "worker",
                 "organization_name": "Acme Corp"
             }
         }

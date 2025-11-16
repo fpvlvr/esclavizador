@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query, status
 from app.domain.entities import UserData
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse, TaskList
 from app.services.task_service import task_service
-from app.api.deps import get_current_active_user, require_master_role
+from app.api.deps import get_current_active_user, require_boss_role
 
 
 router = APIRouter()
@@ -22,11 +22,11 @@ router = APIRouter()
     response_model=TaskResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create task",
-    description="Create new task (master only)"
+    description="Create new task (boss only)"
 )
 async def create_task(
     data: TaskCreate,
-    current_user: Annotated[UserData, Depends(require_master_role)]
+    current_user: Annotated[UserData, Depends(require_boss_role)]
 ) -> TaskResponse:
     """Create new task."""
     task_dict = await task_service.create_task(current_user, data)
@@ -79,12 +79,12 @@ async def get_task(
     response_model=TaskResponse,
     status_code=status.HTTP_200_OK,
     summary="Update task",
-    description="Update existing task (master only)"
+    description="Update existing task (boss only)"
 )
 async def update_task(
     task_id: UUID,
     data: TaskUpdate,
-    current_user: Annotated[UserData, Depends(require_master_role)]
+    current_user: Annotated[UserData, Depends(require_boss_role)]
 ) -> TaskResponse:
     """Update task."""
     task_dict = await task_service.update_task(
@@ -99,11 +99,11 @@ async def update_task(
     "/{task_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete task",
-    description="Soft delete task (master only)"
+    description="Soft delete task (boss only)"
 )
 async def delete_task(
     task_id: UUID,
-    current_user: Annotated[UserData, Depends(require_master_role)]
+    current_user: Annotated[UserData, Depends(require_boss_role)]
 ):
     """Soft delete task (sets is_active=False)."""
     await task_service.delete_task(current_user, str(task_id))

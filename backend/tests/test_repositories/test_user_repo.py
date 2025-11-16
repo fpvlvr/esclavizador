@@ -19,14 +19,14 @@ class TestUserRepository:
         user = await user_repo.create_user(
             email="newuser@example.com",
             password_hash=hash_password("Password123!"),
-            role=UserRole.SLAVE,
+            role=UserRole.WORKER,
             organization_id=test_org["id"]
         )
 
         assert user is not None
         assert user["id"] is not None
         assert user["email"] == "newuser@example.com"
-        assert user["role"] == "slave"
+        assert user["role"] == "worker"
         assert user["organization_id"] == test_org["id"]
         assert user["is_active"] is True
         assert user["created_at"] is not None
@@ -34,16 +34,16 @@ class TestUserRepository:
         # Cleanup
         await user_repo.delete(user["id"])
 
-    async def test_create_user_master_role(self, test_org):
-        """Test creating a user with MASTER role."""
+    async def test_create_user_boss_role(self, test_org):
+        """Test creating a user with BOSS role."""
         user = await user_repo.create_user(
-            email="master@example.com",
-            password_hash=hash_password("MasterPass123!"),
-            role=UserRole.MASTER,
+            email="boss@example.com",
+            password_hash=hash_password("BossPass123!"),
+            role=UserRole.BOSS,
             organization_id=test_org["id"]
         )
 
-        assert user["role"] == "master"
+        assert user["role"] == "boss"
 
         # Cleanup
         await user_repo.delete(user["id"])
@@ -53,7 +53,7 @@ class TestUserRepository:
         user = await user_repo.create_user(
             email="idtest@example.com",
             password_hash=hash_password("Password123!"),
-            role=UserRole.SLAVE,
+            role=UserRole.WORKER,
             organization_id=test_org["id"]
         )
 
@@ -77,7 +77,7 @@ class TestUserRepository:
         user = await user_repo.create_user(
             email="email@example.com",
             password_hash=hash_password("Password123!"),
-            role=UserRole.SLAVE,
+            role=UserRole.WORKER,
             organization_id=test_org["id"]
         )
 
@@ -101,7 +101,7 @@ class TestUserRepository:
         user = await user_repo.create_user(
             email="delete@example.com",
             password_hash=hash_password("Password123!"),
-            role=UserRole.SLAVE,
+            role=UserRole.WORKER,
             organization_id=test_org["id"]
         )
 
@@ -123,7 +123,7 @@ class TestUserRepository:
         user = await user_repo.create_user(
             email="update@example.com",
             password_hash=hash_password("Password123!"),
-            role=UserRole.SLAVE,
+            role=UserRole.WORKER,
             organization_id=test_org["id"]
         )
 

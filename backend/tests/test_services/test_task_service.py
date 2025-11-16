@@ -15,7 +15,7 @@ from app.repositories.task_repo import task_repo
 class TestTaskService:
     """Test TaskService methods."""
 
-    async def test_create_task(self, test_master, test_project):
+    async def test_create_task(self, test_boss, test_project):
         """Test creating task with valid project."""
         # Create task
         data = TaskCreate(
@@ -24,7 +24,7 @@ class TestTaskService:
             project_id=test_project["id"]
         )
 
-        task = await task_service.create_task(test_master, data)
+        task = await task_service.create_task(test_boss, data)
 
         assert task["id"] is not None
         assert task["name"] == "New Task"
@@ -35,7 +35,7 @@ class TestTaskService:
         # Cleanup via repository
         await task_repo.delete(task["id"])
 
-    async def test_create_task_invalid_project(self, test_master):
+    async def test_create_task_invalid_project(self, test_boss):
         """Test creating task with non-existent project."""
         data = TaskCreate(
             name="New Task",
@@ -43,33 +43,33 @@ class TestTaskService:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            await task_service.create_task(test_master, data)
+            await task_service.create_task(test_boss, data)
 
         assert exc_info.value.status_code == 404
         assert exc_info.value.detail == "Project not found"
 
-    async def test_create_task_project_wrong_org(self, test_master, second_org_project):
+    async def test_create_task_project_wrong_org(self, test_boss, second_org_project):
         """Test creating task with project from different org."""
-        # Try to create task as test_master (different org) using second_org_project
+        # Try to create task as test_boss (different org) using second_org_project
         data = TaskCreate(
             name="New Task",
             project_id=second_org_project["id"]
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            await task_service.create_task(test_master, data)
+            await task_service.create_task(test_boss, data)
 
         assert exc_info.value.status_code == 404
         assert exc_info.value.detail == "Project not found"
 
-    async def test_list_tasks(self, test_slave, test_project):
+    async def test_list_tasks(self, test_worker, test_project):
         """Test listing tasks."""
         # Create tasks in test_project via repository
         task1 = await task_repo.create(name="Task 1", description=None, project_id=test_project["id"])
         task2 = await task_repo.create(name="Task 2", description=None, project_id=test_project["id"])
 
         result = await task_service.list_tasks(
-            user=test_slave,
+            user=test_worker,
             project_id=None,
             is_active=None,
             limit=10,
@@ -84,7 +84,7 @@ class TestTaskService:
         await task_repo.delete(task1["id"])
         await task_repo.delete(task2["id"])
 
-    async def test_list_tasks_filter_by_project(self, test_slave, test_org):
+    async def test_list_tasks_filter_by_project(self, test_worker, test_org):
         """Test filtering tasks by project_id."""
         # Create a second project in same org for testing filtering
         from app.repositories.project_repo import project_repo
@@ -106,7 +106,7 @@ class TestTaskService:
 
         # Filter by project1
         result = await task_service.list_tasks(
-            user=test_slave,
+            user=test_worker,
             project_id=project1["id"],
             is_active=None,
             limit=10,
@@ -123,11 +123,11 @@ class TestTaskService:
         await project_repo.delete(project1["id"])
         await project_repo.delete(project2["id"])
 
-    async def test_list_tasks_invalid_project_filter(self, test_slave):
+    async def test_list_tasks_invalid_project_filter(self, test_worker):
         """Test filtering by non-existent project raises 404."""
         with pytest.raises(HTTPException) as exc_info:
             await task_service.list_tasks(
-                user=test_slave,
+                user=test_worker,
                 project_id="00000000-0000-0000-0000-000000000000",
                 is_active=None,
                 limit=10,
@@ -137,7 +137,7 @@ class TestTaskService:
         assert exc_info.value.status_code == 404
         assert exc_info.value.detail == "Project not found"
 
-    async def test_list_tasks_filter_by_is_active(self, test_slave, test_org, test_project):
+    async def test_list_tasks_filter_by_is_active(self, test_worker, test_org, test_project):
         """Test filtering tasks by is_active."""
         # Create active and inactive tasks via repository
         active = await task_repo.create(name="Active", description=None, project_id=test_project["id"])
@@ -147,7 +147,7 @@ class TestTaskService:
 
         # Filter active only
         result = await task_service.list_tasks(
-            user=test_slave,
+            user=test_worker,
             project_id=None,
             is_active=True,
             limit=10,
@@ -161,7 +161,7 @@ class TestTaskService:
         await task_repo.delete(active["id"])
         await task_repo.delete(inactive["id"])
 
-    async def test_get_task_success(self, test_slave, test_project):
+    async def test_get_task_success(self, test_worker, test_project):
         """Test getting task by ID with project_name."""
         # Create task via repository
         created = await task_repo.create(
@@ -171,7 +171,7 @@ class TestTaskService:
         )
 
         # Get it
-        task = await task_service.get_task(test_slave, created["id"])
+        task = await task_service.get_task(test_worker, created["id"])
 
         assert task["id"] == created["id"]
         assert task["name"] == "Test Task"
@@ -180,18 +180,18 @@ class TestTaskService:
         # Cleanup
         await task_repo.delete(created["id"])
 
-    async def test_get_task_not_found(self, test_slave):
+    async def test_get_task_not_found(self, test_worker):
         """Test 404 when task doesn't exist."""
         with pytest.raises(HTTPException) as exc_info:
             await task_service.get_task(
-                test_slave,
+                test_worker,
                 "00000000-0000-0000-0000-000000000000"
             )
 
         assert exc_info.value.status_code == 404
         assert exc_info.value.detail == "Task not found"
 
-    async def test_get_task_wrong_org_raises_404(self, test_slave, second_org_project):
+    async def test_get_task_wrong_org_raises_404(self, test_worker, second_org_project):
         """Test multi-tenant isolation raises 404."""
         # Create task in second_org_project via repository
         task = await task_repo.create(
@@ -200,16 +200,16 @@ class TestTaskService:
             project_id=second_org_project["id"]
         )
 
-        # Try to get as test_slave (different org)
+        # Try to get as test_worker (different org)
         with pytest.raises(HTTPException) as exc_info:
-            await task_service.get_task(test_slave, task["id"])
+            await task_service.get_task(test_worker, task["id"])
 
         assert exc_info.value.status_code == 404
 
         # Cleanup
         await task_repo.delete(task["id"])
 
-    async def test_update_task(self, test_master, test_project):
+    async def test_update_task(self, test_boss, test_project):
         """Test updating task."""
         # Create task via repository
         task = await task_repo.create(
@@ -224,7 +224,7 @@ class TestTaskService:
             description="Updated desc"
         )
         updated = await task_service.update_task(
-            test_master,
+            test_boss,
             task["id"],
             data
         )
@@ -236,7 +236,7 @@ class TestTaskService:
         # Cleanup
         await task_repo.delete(task["id"])
 
-    async def test_update_task_partial(self, test_master, test_project):
+    async def test_update_task_partial(self, test_boss, test_project):
         """Test partial update."""
         # Create task via repository
         task = await task_repo.create(
@@ -248,7 +248,7 @@ class TestTaskService:
         # Update only name
         data = TaskUpdate(name="Updated Name")
         updated = await task_service.update_task(
-            test_master,
+            test_boss,
             task["id"],
             data
         )
@@ -259,20 +259,20 @@ class TestTaskService:
         # Cleanup
         await task_repo.delete(task["id"])
 
-    async def test_update_not_found(self, test_master):
+    async def test_update_not_found(self, test_boss):
         """Test 404 when updating non-existent task."""
         data = TaskUpdate(name="Updated")
 
         with pytest.raises(HTTPException) as exc_info:
             await task_service.update_task(
-                test_master,
+                test_boss,
                 "00000000-0000-0000-0000-000000000000",
                 data
             )
 
         assert exc_info.value.status_code == 404
 
-    async def test_update_wrong_org_raises_404(self, test_master, second_org_project):
+    async def test_update_wrong_org_raises_404(self, test_boss, second_org_project):
         """Test multi-tenant isolation on update."""
         # Create task in second_org_project via repository
         task = await task_repo.create(
@@ -281,17 +281,17 @@ class TestTaskService:
             project_id=second_org_project["id"]
         )
 
-        # Try to update as test_master (different org)
+        # Try to update as test_boss (different org)
         data = TaskUpdate(name="Should Not Work")
         with pytest.raises(HTTPException) as exc_info:
-            await task_service.update_task(test_master, task["id"], data)
+            await task_service.update_task(test_boss, task["id"], data)
 
         assert exc_info.value.status_code == 404
 
         # Cleanup
         await task_repo.delete(task["id"])
 
-    async def test_delete_task(self, test_master, test_org, test_project):
+    async def test_delete_task(self, test_boss, test_org, test_project):
         """Test soft deleting task."""
         # Create task via repository
         task = await task_repo.create(
@@ -301,7 +301,7 @@ class TestTaskService:
         )
 
         # Delete
-        result = await task_service.delete_task(test_master, task["id"])
+        result = await task_service.delete_task(test_boss, task["id"])
 
         assert result is True
 
@@ -313,17 +313,17 @@ class TestTaskService:
         # Cleanup
         await task_repo.delete(task["id"])
 
-    async def test_delete_not_found(self, test_master):
+    async def test_delete_not_found(self, test_boss):
         """Test 404 when deleting non-existent task."""
         with pytest.raises(HTTPException) as exc_info:
             await task_service.delete_task(
-                test_master,
+                test_boss,
                 "00000000-0000-0000-0000-000000000000"
             )
 
         assert exc_info.value.status_code == 404
 
-    async def test_delete_wrong_org_raises_404(self, test_master, second_org, second_org_project):
+    async def test_delete_wrong_org_raises_404(self, test_boss, second_org, second_org_project):
         """Test multi-tenant isolation on delete."""
         # Create task in second_org_project via repository
         task = await task_repo.create(
@@ -332,9 +332,9 @@ class TestTaskService:
             project_id=second_org_project["id"]
         )
 
-        # Try to delete as test_master (different org)
+        # Try to delete as test_boss (different org)
         with pytest.raises(HTTPException) as exc_info:
-            await task_service.delete_task(test_master, task["id"])
+            await task_service.delete_task(test_boss, task["id"])
 
         assert exc_info.value.status_code == 404
 

@@ -26,7 +26,7 @@ class TaskService:
         Create task in project.
 
         Args:
-            user: Authenticated user (master role verified by dependency)
+            user: Authenticated user (boss role verified by dependency)
             data: Task creation data
 
         Returns:
@@ -146,7 +146,7 @@ class TaskService:
         Note: Cannot change project_id (not included in TaskUpdate schema)
 
         Args:
-            user: Authenticated user (master role verified by dependency)
+            user: Authenticated user (boss role verified by dependency)
             task_id: Task UUID
             data: Update data (only provided fields will be updated)
 
@@ -179,7 +179,7 @@ class TaskService:
         Soft delete task (within user's org).
 
         Args:
-            user: Authenticated user (master role verified by dependency)
+            user: Authenticated user (boss role verified by dependency)
             task_id: Task UUID
 
         Returns:
