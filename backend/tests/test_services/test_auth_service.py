@@ -278,16 +278,15 @@ class TestAuthService:
         await user_repo.delete(existing_user["id"])
         await organization_repo.delete(org["id"])
 
-    async def test_authenticate_success(self):
+    async def test_authenticate_success(self, test_org):
         """Test successful authentication returns user and tokens."""
-        # Create test user
-        org = await organization_repo.create_organization(name="Auth Test Org")
+        # Create test user with known password
         password = "AuthPass123!"
         user = await user_repo.create_user(
             email="authuser@example.com",
             password_hash=hash_password(password),
             role=UserRole.MASTER,
-            organization_id=str(org["id"])
+            organization_id=test_org["id"]
         )
 
         # Authenticate
@@ -309,16 +308,14 @@ class TestAuthService:
 
         # Cleanup
         await user_repo.delete(user["id"])
-        await organization_repo.delete(org["id"])
 
-    async def test_authenticate_wrong_password(self):
+    async def test_authenticate_wrong_password(self, test_org):
         """Test authentication with wrong password raises 401."""
-        org = await organization_repo.create_organization(name="Wrong Pass Org")
         user = await user_repo.create_user(
             email="wrongpass@example.com",
             password_hash=hash_password("CorrectPass123!"),
             role=UserRole.SLAVE,
-            organization_id=str(org["id"])
+            organization_id=test_org["id"]
         )
 
         # Try to authenticate with wrong password
@@ -333,16 +330,14 @@ class TestAuthService:
 
         # Cleanup
         await user_repo.delete(user["id"])
-        await organization_repo.delete(org["id"])
 
-    async def test_authenticate_inactive_user(self):
+    async def test_authenticate_inactive_user(self, test_org):
         """Test authentication with inactive user raises 403."""
-        org = await organization_repo.create_organization(name="Inactive User Org")
         user = await user_repo.create_user(
             email="inactive@example.com",
             password_hash=hash_password("Password123!"),
             role=UserRole.SLAVE,
-            organization_id=str(org["id"])
+            organization_id=test_org["id"]
         )
         # Mark user as inactive
         await user_repo.update(user["id"], {"is_active": False})
@@ -359,17 +354,15 @@ class TestAuthService:
 
         # Cleanup
         await user_repo.delete(user["id"])
-        await organization_repo.delete(org["id"])
 
-    async def test_refresh_token_success(self):
+    async def test_refresh_token_success(self, test_org):
         """Test refreshing access token returns new token."""
         # Create user and authenticate to get refresh token
-        org = await organization_repo.create_organization(name="Refresh Test Org")
         user = await user_repo.create_user(
             email="refresh@example.com",
             password_hash=hash_password("Password123!"),
             role=UserRole.MASTER,
-            organization_id=str(org["id"])
+            organization_id=test_org["id"]
         )
 
         _, _, refresh_token = await auth_service.authenticate(
@@ -390,17 +383,15 @@ class TestAuthService:
 
         # Cleanup
         await user_repo.delete(user["id"])
-        await organization_repo.delete(org["id"])
 
-    async def test_refresh_token_revoked(self):
+    async def test_refresh_token_revoked(self, test_org):
         """Test refreshing revoked token raises 401."""
         # Create user and authenticate
-        org = await organization_repo.create_organization(name="Revoked Token Org")
         user = await user_repo.create_user(
             email="revoked@example.com",
             password_hash=hash_password("Password123!"),
             role=UserRole.SLAVE,
-            organization_id=str(org["id"])
+            organization_id=test_org["id"]
         )
 
         _, _, refresh_token = await auth_service.authenticate(
@@ -421,17 +412,15 @@ class TestAuthService:
 
         # Cleanup
         await user_repo.delete(user["id"])
-        await organization_repo.delete(org["id"])
 
-    async def test_logout_success(self):
+    async def test_logout_success(self, test_org):
         """Test logout revokes refresh token."""
         # Create user and authenticate
-        org = await organization_repo.create_organization(name="Logout Test Org")
         user = await user_repo.create_user(
             email="logout@example.com",
             password_hash=hash_password("Password123!"),
             role=UserRole.MASTER,
-            organization_id=str(org["id"])
+            organization_id=test_org["id"]
         )
 
         _, _, refresh_token = await auth_service.authenticate(
@@ -450,4 +439,3 @@ class TestAuthService:
 
         # Cleanup
         await user_repo.delete(user["id"])
-        await organization_repo.delete(org["id"])
