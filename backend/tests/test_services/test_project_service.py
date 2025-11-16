@@ -7,13 +7,10 @@ Tests business logic, authorization, and multi-tenant enforcement.
 import pytest
 from fastapi import HTTPException
 
-from app.models.organization import Organization
-from app.models.user import User, UserRole
-from app.models.project import Project
-from app.models.task import Task
-from app.core.security import hash_password
 from app.schemas.project import ProjectCreate, ProjectUpdate
 from app.services.project_service import project_service
+from app.repositories.project_repo import project_repo
+from app.repositories.task_repo import task_repo
 
 
 class TestProjectService:
@@ -34,14 +31,22 @@ class TestProjectService:
         assert project["organization_id"] == test_org["id"]
         assert project["task_count"] == 0
 
-        # Cleanup - project is dict, delete via ORM
-        await Project.get(id=project["id"]).delete()
+        # Cleanup via repository
+        await project_repo.delete(project["id"])
 
-    async def test_list_projects(self, test_user, test_org_orm):
+    async def test_list_projects(self, test_user, test_org):
         """Test listing projects."""
-        # Create some projects using ORM fixture
-        project1 = await Project.create(name="Project 1", organization=test_org_orm)
-        project2 = await Project.create(name="Project 2", organization=test_org_orm)
+        # Create some projects via repository
+        project1 = await project_repo.create(
+            name="Project 1",
+            description=None,
+            org_id=test_org["id"]
+        )
+        project2 = await project_repo.create(
+            name="Project 2",
+            description=None,
+            org_id=test_org["id"]
+        )
 
         result = await project_service.list_projects(
             user=test_user,
@@ -56,22 +61,24 @@ class TestProjectService:
         assert result["offset"] == 0
 
         # Cleanup
-        await project1.delete()
-        await project2.delete()
+        await project_repo.delete(project1["id"])
+        await project_repo.delete(project2["id"])
 
-    async def test_list_filter_by_is_active(self, test_user, test_org_orm):
+    async def test_list_filter_by_is_active(self, test_user, test_org):
         """Test filtering by is_active."""
-        # Create active and inactive projects
-        active = await Project.create(
+        # Create active and inactive projects via repository
+        active = await project_repo.create(
             name="Active",
-            organization=test_org_orm,
-            is_active=True
+            description=None,
+            org_id=test_org["id"]
         )
-        inactive = await Project.create(
+        inactive = await project_repo.create(
             name="Inactive",
-            organization=test_org_orm,
-            is_active=False
+            description=None,
+            org_id=test_org["id"]
         )
+        # Soft delete to make inactive
+        await project_repo.soft_delete(inactive["id"], test_org["id"])
 
         # Filter active only
         result = await project_service.list_projects(
@@ -85,26 +92,27 @@ class TestProjectService:
         assert result["items"][0]["name"] == "Active"
 
         # Cleanup
-        await active.delete()
-        await inactive.delete()
+        await project_repo.delete(active["id"])
+        await project_repo.delete(inactive["id"])
 
-    async def test_get_project_success(self, test_user, test_org_orm):
+    async def test_get_project_success(self, test_user, test_org):
         """Test getting project by ID."""
-        # Create project
-        created = await Project.create(
+        # Create project via repository
+        created = await project_repo.create(
             name="Test Project",
-            organization=test_org_orm
+            description=None,
+            org_id=test_org["id"]
         )
 
         # Get it
-        project = await project_service.get_project(test_user, str(created.id))
+        project = await project_service.get_project(test_user, created["id"])
 
-        assert project["id"] == created.id
+        assert project["id"] == created["id"]
         assert project["name"] == "Test Project"
         assert project["task_count"] == 0
 
         # Cleanup
-        await created.delete()
+        await project_repo.delete(created["id"])
 
     async def test_get_project_not_found(self, test_user):
         """Test 404 when project doesn't exist."""
@@ -117,31 +125,32 @@ class TestProjectService:
         assert exc_info.value.status_code == 404
         assert exc_info.value.detail == "Project not found"
 
-    async def test_get_project_wrong_org_raises_404(self, test_user, second_org_orm):
+    async def test_get_project_wrong_org_raises_404(self, test_user, second_org):
         """Test multi-tenant isolation raises 404."""
-        # Create project in second org
-        project = await Project.create(
+        # Create project in second org via repository
+        project = await project_repo.create(
             name="Other Org Project",
-            organization=second_org_orm
+            description=None,
+            org_id=second_org["id"]
         )
 
         # Try to get it as test_user (different org)
         with pytest.raises(HTTPException) as exc_info:
-            await project_service.get_project(test_user, str(project.id))
+            await project_service.get_project(test_user, project["id"])
 
         assert exc_info.value.status_code == 404
         assert exc_info.value.detail == "Project not found"
 
         # Cleanup
-        await project.delete()
+        await project_repo.delete(project["id"])
 
-    async def test_update_project(self, test_master, test_org_orm):
+    async def test_update_project(self, test_master, test_org):
         """Test updating project."""
-        # Create project
-        project = await Project.create(
+        # Create project via repository
+        project = await project_repo.create(
             name="Original",
             description="Original desc",
-            organization=test_org_orm
+            org_id=test_org["id"]
         )
 
         # Update
@@ -151,7 +160,7 @@ class TestProjectService:
         )
         updated = await project_service.update_project(
             test_master,
-            str(project.id),
+            project["id"],
             data
         )
 
@@ -160,22 +169,22 @@ class TestProjectService:
         assert updated["task_count"] == 0
 
         # Cleanup
-        await project.delete()
+        await project_repo.delete(project["id"])
 
-    async def test_update_project_partial(self, test_master, test_org_orm):
+    async def test_update_project_partial(self, test_master, test_org):
         """Test partial update (only some fields)."""
-        # Create project
-        project = await Project.create(
+        # Create project via repository
+        project = await project_repo.create(
             name="Original",
             description="Original desc",
-            organization=test_org_orm
+            org_id=test_org["id"]
         )
 
         # Update only name
         data = ProjectUpdate(name="Updated Name")
         updated = await project_service.update_project(
             test_master,
-            str(project.id),
+            project["id"],
             data
         )
 
@@ -183,7 +192,7 @@ class TestProjectService:
         assert updated["description"] == "Original desc"  # Unchanged
 
         # Cleanup
-        await project.delete()
+        await project_repo.delete(project["id"])
 
     async def test_update_not_found(self, test_master):
         """Test 404 when updating non-existent project."""
@@ -198,12 +207,13 @@ class TestProjectService:
 
         assert exc_info.value.status_code == 404
 
-    async def test_update_wrong_org_raises_404(self, test_master, second_org_orm):
+    async def test_update_wrong_org_raises_404(self, test_master, second_org):
         """Test multi-tenant isolation on update."""
-        # Create project in second org
-        project = await Project.create(
+        # Create project in second org via repository
+        project = await project_repo.create(
             name="Other Org Project",
-            organization=second_org_orm
+            description=None,
+            org_id=second_org["id"]
         )
 
         # Try to update as test_master (different org)
@@ -211,38 +221,39 @@ class TestProjectService:
         with pytest.raises(HTTPException) as exc_info:
             await project_service.update_project(
                 test_master,
-                str(project.id),
+                project["id"],
                 data
             )
 
         assert exc_info.value.status_code == 404
 
         # Cleanup
-        await project.delete()
+        await project_repo.delete(project["id"])
 
-    async def test_delete_project(self, test_master, test_org_orm):
+    async def test_delete_project(self, test_master, test_org):
         """Test soft deleting project."""
-        # Create project
-        project = await Project.create(
+        # Create project via repository
+        project = await project_repo.create(
             name="Test Project",
-            organization=test_org_orm,
-            is_active=True
+            description=None,
+            org_id=test_org["id"]
         )
 
         # Delete
         result = await project_service.delete_project(
             test_master,
-            str(project.id)
+            project["id"]
         )
 
         assert result is True
 
-        # Verify soft deleted
-        project = await Project.get(id=project.id)
-        assert project.is_active is False
+        # Verify soft deleted via repository
+        fetched = await project_repo.get_by_id(project["id"], test_org["id"])
+        assert fetched is not None
+        assert fetched["is_active"] is False
 
         # Cleanup
-        await project.delete()
+        await project_repo.delete(project["id"])
 
     async def test_delete_not_found(self, test_master):
         """Test 404 when deleting non-existent project."""
@@ -254,33 +265,39 @@ class TestProjectService:
 
         assert exc_info.value.status_code == 404
 
-    async def test_delete_wrong_org_raises_404(self, test_master, second_org_orm):
+    async def test_delete_wrong_org_raises_404(self, test_master, second_org):
         """Test multi-tenant isolation on delete."""
-        # Create project in second org
-        project = await Project.create(
+        # Create project in second org via repository
+        project = await project_repo.create(
             name="Other Org Project",
-            organization=second_org_orm
+            description=None,
+            org_id=second_org["id"]
         )
 
         # Try to delete as test_master (different org)
         with pytest.raises(HTTPException) as exc_info:
-            await project_service.delete_project(test_master, str(project.id))
+            await project_service.delete_project(test_master, project["id"])
 
         assert exc_info.value.status_code == 404
 
-        # Verify not deleted
-        project = await Project.get(id=project.id)
-        assert project.is_active is True
+        # Verify not deleted via repository
+        fetched = await project_repo.get_by_id(project["id"], second_org["id"])
+        assert fetched is not None
+        assert fetched["is_active"] is True
 
         # Cleanup
-        await project.delete()
+        await project_repo.delete(project["id"])
 
-    async def test_pagination(self, test_user, test_org_orm):
+    async def test_pagination(self, test_user, test_org):
         """Test pagination with limit and offset."""
-        # Create multiple projects
+        # Create multiple projects via repository
         projects = []
         for i in range(5):
-            p = await Project.create(name=f"Project {i}", organization=test_org_orm)
+            p = await project_repo.create(
+                name=f"Project {i}",
+                description=None,
+                org_id=test_org["id"]
+            )
             projects.append(p)
 
         # Get first 2
@@ -310,26 +327,38 @@ class TestProjectService:
 
         # Cleanup
         for p in projects:
-            await p.delete()
+            await project_repo.delete(p["id"])
 
-    async def test_task_count_accuracy(self, test_user, test_org_orm):
+    async def test_task_count_accuracy(self, test_user, test_org):
         """Test task_count is computed correctly."""
-        # Create project
-        project = await Project.create(name="Test Project", organization=test_org_orm)
+        # Create project via repository
+        project = await project_repo.create(
+            name="Test Project",
+            description=None,
+            org_id=test_org["id"]
+        )
 
         # Initially no tasks
-        result = await project_service.get_project(test_user, str(project.id))
+        result = await project_service.get_project(test_user, project["id"])
         assert result["task_count"] == 0
 
-        # Add tasks
-        task1 = await Task.create(name="Task 1", project=project)
-        task2 = await Task.create(name="Task 2", project=project)
+        # Add tasks via repository
+        task1 = await task_repo.create(
+            name="Task 1",
+            description=None,
+            project_id=project["id"]
+        )
+        task2 = await task_repo.create(
+            name="Task 2",
+            description=None,
+            project_id=project["id"]
+        )
 
         # Should show 2 tasks
-        result = await project_service.get_project(test_user, str(project.id))
+        result = await project_service.get_project(test_user, project["id"])
         assert result["task_count"] == 2
 
         # Cleanup
-        await task1.delete()
-        await task2.delete()
-        await project.delete()
+        await task_repo.delete(task1["id"])
+        await task_repo.delete(task2["id"])
+        await project_repo.delete(project["id"])
