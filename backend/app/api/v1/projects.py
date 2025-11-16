@@ -29,8 +29,8 @@ async def create_project(
     current_user: Annotated[User, Depends(require_master_role)]
 ) -> ProjectResponse:
     """Create new project."""
-    project = await project_service.create_project(current_user, data)
-    return ProjectResponse.model_validate(project)
+    project_dict = await project_service.create_project(current_user, data)
+    return ProjectResponse(**project_dict)
 
 
 @router.get(
@@ -68,8 +68,8 @@ async def get_project(
     current_user: Annotated[User, Depends(get_current_active_user)]
 ) -> ProjectResponse:
     """Get project details by ID."""
-    project = await project_service.get_project(current_user, str(project_id))
-    return ProjectResponse.model_validate(project)
+    project_dict = await project_service.get_project(current_user, str(project_id))
+    return ProjectResponse(**project_dict)
 
 
 @router.put(
@@ -85,12 +85,12 @@ async def update_project(
     current_user: Annotated[User, Depends(require_master_role)]
 ) -> ProjectResponse:
     """Update project."""
-    project = await project_service.update_project(
+    project_dict = await project_service.update_project(
         user=current_user,
         project_id=str(project_id),
         data=data
     )
-    return ProjectResponse.model_validate(project)
+    return ProjectResponse(**project_dict)
 
 
 @router.delete(

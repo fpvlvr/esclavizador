@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from fastapi import HTTPException
 
-from app.services.auth_service import AuthService
+from app.services.auth_service import auth_service
 from app.core.security import (
     hash_password,
     verify_password,
@@ -210,8 +210,6 @@ class TestAuthService:
 
     async def test_register_new_user_new_org(self):
         """Test registering new user creates user and organization."""
-        auth_service = AuthService()
-
         user = await auth_service.register(
             email="newuser@example.com",
             password="NewPass123!",
@@ -220,25 +218,23 @@ class TestAuthService:
         )
 
         assert user is not None
-        assert user.email == "newuser@example.com"
-        assert user.role == UserRole.MASTER
-        assert user.is_active is True
+        assert user["email"] == "newuser@example.com"
+        assert user["role"] == "master"
+        assert user["is_active"] is True
 
         # Verify organization was created
-        org = await organization_repo.get_by_id(str(user.organization_id))
+        org = await organization_repo.get_by_id(str(user["organization_id"]))
         assert org is not None
-        assert org.name == "New Test Org"
+        assert org["name"] == "New Test Org"
 
         # Cleanup
-        await user.delete()
-        await org.delete()
+        await user_repo.delete(user["id"])
+        await organization_repo.delete(org["id"])
 
     async def test_register_org_name_exists(self):
         """Test registration raises 409 when org name already exists."""
         # Create existing organization
         existing_org = await organization_repo.create_organization(name="Existing Org")
-
-        auth_service = AuthService()
 
         # Try to register with same org name
         with pytest.raises(HTTPException) as exc_info:
@@ -253,7 +249,7 @@ class TestAuthService:
         assert "Organization name already exists" in exc_info.value.detail
 
         # Cleanup
-        await existing_org.delete()
+        await organization_repo.delete(existing_org["id"])
 
     async def test_register_duplicate_email(self):
         """Test registration raises 409 for duplicate email."""
@@ -263,10 +259,8 @@ class TestAuthService:
             email="existing@example.com",
             password_hash=hash_password("Password123!"),
             role=UserRole.SLAVE,
-            organization=org
+            organization_id=str(org["id"])
         )
-
-        auth_service = AuthService()
 
         # Try to register with same email
         with pytest.raises(HTTPException) as exc_info:
@@ -281,8 +275,8 @@ class TestAuthService:
         assert "Email already registered" in exc_info.value.detail
 
         # Cleanup
-        await existing_user.delete()
-        await org.delete()
+        await user_repo.delete(existing_user["id"])
+        await organization_repo.delete(org["id"])
 
     async def test_authenticate_success(self):
         """Test successful authentication returns user and tokens."""
@@ -293,10 +287,8 @@ class TestAuthService:
             email="authuser@example.com",
             password_hash=hash_password(password),
             role=UserRole.MASTER,
-            organization=org
+            organization_id=str(org["id"])
         )
-
-        auth_service = AuthService()
 
         # Authenticate
         returned_user, access_token, refresh_token = await auth_service.authenticate(
@@ -304,20 +296,20 @@ class TestAuthService:
             password=password
         )
 
-        assert returned_user.id == user.id
-        assert returned_user.email == "authuser@example.com"
+        assert returned_user["id"] == user["id"]
+        assert returned_user["email"] == "authuser@example.com"
         assert access_token is not None
         assert refresh_token is not None
 
         # Verify access token claims
         payload = decode_token(access_token)
-        assert payload["sub"] == str(user.id)
+        assert payload["sub"] == str(user["id"])
         assert payload["email"] == "authuser@example.com"
         assert payload["role"] == "master"
 
         # Cleanup
-        await user.delete()
-        await org.delete()
+        await user_repo.delete(user["id"])
+        await organization_repo.delete(org["id"])
 
     async def test_authenticate_wrong_password(self):
         """Test authentication with wrong password raises 401."""
@@ -326,10 +318,8 @@ class TestAuthService:
             email="wrongpass@example.com",
             password_hash=hash_password("CorrectPass123!"),
             role=UserRole.SLAVE,
-            organization=org
+            organization_id=str(org["id"])
         )
-
-        auth_service = AuthService()
 
         # Try to authenticate with wrong password
         with pytest.raises(HTTPException) as exc_info:
@@ -342,8 +332,8 @@ class TestAuthService:
         assert "Invalid credentials" in exc_info.value.detail
 
         # Cleanup
-        await user.delete()
-        await org.delete()
+        await user_repo.delete(user["id"])
+        await organization_repo.delete(org["id"])
 
     async def test_authenticate_inactive_user(self):
         """Test authentication with inactive user raises 403."""
@@ -352,13 +342,10 @@ class TestAuthService:
             email="inactive@example.com",
             password_hash=hash_password("Password123!"),
             role=UserRole.SLAVE,
-            organization=org
+            organization_id=str(org["id"])
         )
         # Mark user as inactive
-        user.is_active = False
-        await user.save()
-
-        auth_service = AuthService()
+        await user_repo.update(user["id"], {"is_active": False})
 
         # Try to authenticate
         with pytest.raises(HTTPException) as exc_info:
@@ -371,8 +358,8 @@ class TestAuthService:
         assert "Inactive account" in exc_info.value.detail
 
         # Cleanup
-        await user.delete()
-        await org.delete()
+        await user_repo.delete(user["id"])
+        await organization_repo.delete(org["id"])
 
     async def test_refresh_token_success(self):
         """Test refreshing access token returns new token."""
@@ -382,10 +369,9 @@ class TestAuthService:
             email="refresh@example.com",
             password_hash=hash_password("Password123!"),
             role=UserRole.MASTER,
-            organization=org
+            organization_id=str(org["id"])
         )
 
-        auth_service = AuthService()
         _, _, refresh_token = await auth_service.authenticate(
             email="refresh@example.com",
             password="Password123!"
@@ -399,12 +385,12 @@ class TestAuthService:
 
         # Verify new token is valid
         payload = decode_token(new_access_token)
-        assert payload["sub"] == str(user.id)
+        assert payload["sub"] == str(user["id"])
         assert payload["type"] == "access"
 
         # Cleanup
-        await user.delete()
-        await org.delete()
+        await user_repo.delete(user["id"])
+        await organization_repo.delete(org["id"])
 
     async def test_refresh_token_revoked(self):
         """Test refreshing revoked token raises 401."""
@@ -414,10 +400,9 @@ class TestAuthService:
             email="revoked@example.com",
             password_hash=hash_password("Password123!"),
             role=UserRole.SLAVE,
-            organization=org
+            organization_id=str(org["id"])
         )
 
-        auth_service = AuthService()
         _, _, refresh_token = await auth_service.authenticate(
             email="revoked@example.com",
             password="Password123!"
@@ -435,8 +420,8 @@ class TestAuthService:
         assert "Invalid or expired refresh token" in exc_info.value.detail
 
         # Cleanup
-        await user.delete()
-        await org.delete()
+        await user_repo.delete(user["id"])
+        await organization_repo.delete(org["id"])
 
     async def test_logout_success(self):
         """Test logout revokes refresh token."""
@@ -446,10 +431,9 @@ class TestAuthService:
             email="logout@example.com",
             password_hash=hash_password("Password123!"),
             role=UserRole.MASTER,
-            organization=org
+            organization_id=str(org["id"])
         )
 
-        auth_service = AuthService()
         _, _, refresh_token = await auth_service.authenticate(
             email="logout@example.com",
             password="Password123!"
@@ -465,5 +449,5 @@ class TestAuthService:
         assert exc_info.value.status_code == 401
 
         # Cleanup
-        await user.delete()
-        await org.delete()
+        await user_repo.delete(user["id"])
+        await organization_repo.delete(org["id"])

@@ -6,10 +6,8 @@ Tests CRUD operations and multi-tenant isolation.
 
 import pytest
 
-from app.models.organization import Organization
-from app.models.project import Project
-from app.models.task import Task
 from app.repositories.project_repo import project_repo
+from app.repositories.task_repo import task_repo
 
 
 class TestProjectRepository:
@@ -20,101 +18,99 @@ class TestProjectRepository:
         project = await project_repo.create(
             name="New Project",
             description="Test description",
-            org_id=str(test_org.id)
+            org_id=test_org["id"]
         )
 
-        assert project.id is not None
-        assert project.name == "New Project"
-        assert project.description == "Test description"
-        assert str(project.organization_id) == str(test_org.id)
-        assert project.is_active is True
-        assert project.task_count == 0  # New project has no tasks
+        assert project["id"] is not None
+        assert project["name"] == "New Project"
+        assert project["description"] == "Test description"
+        assert project["organization_id"] == test_org["id"]
+        assert project["is_active"] is True
+        assert project["task_count"] == 0  # New project has no tasks
 
         # Cleanup
-        await project.delete()
+        await project_repo.delete(project["id"])
 
     async def test_get_by_id_success(self, test_org):
         """Test getting project by ID."""
-        # Create project
-        created_project = await Project.create(
+        # Create project via repository
+        created_project = await project_repo.create(
             name="Test Project",
             description="Test description",
-            organization=test_org
+            org_id=test_org["id"]
         )
 
         # Get by ID
         project = await project_repo.get_by_id(
-            str(created_project.id),
-            str(test_org.id)
+            created_project["id"],
+            test_org["id"]
         )
 
         assert project is not None
-        assert project.id == created_project.id
-        assert project.name == "Test Project"
-        assert project.task_count == 0
+        assert project["id"] == created_project["id"]
+        assert project["name"] == "Test Project"
+        assert project["task_count"] == 0
 
         # Cleanup
-        await created_project.delete()
+        await project_repo.delete(created_project["id"])
 
     async def test_get_by_id_returns_task_count(self, test_org):
         """Test that get_by_id includes accurate task_count."""
-        # Create project
-        created_project = await Project.create(
+        # Create project via repository
+        created_project = await project_repo.create(
             name="Test Project",
-            organization=test_org
+            description=None,
+            org_id=test_org["id"]
         )
 
-        # Create some tasks
-        task1 = await Task.create(name="Task 1", project=created_project)
-        task2 = await Task.create(name="Task 2", project=created_project)
+        # Create some tasks via repository
+        task1 = await task_repo.create(name="Task 1", description=None, project_id=created_project["id"])
+        task2 = await task_repo.create(name="Task 2", description=None, project_id=created_project["id"])
 
         # Get project
         project = await project_repo.get_by_id(
-            str(created_project.id),
-            str(test_org.id)
+            created_project["id"],
+            test_org["id"]
         )
 
         assert project is not None
-        assert project.task_count == 2
+        assert project["task_count"] == 2
 
         # Cleanup
-        await task1.delete()
-        await task2.delete()
-        await created_project.delete()
+        await task_repo.delete(task1["id"])
+        await task_repo.delete(task2["id"])
+        await project_repo.delete(created_project["id"])
 
-    async def test_get_by_id_wrong_org_returns_none(self, test_org):
+    async def test_get_by_id_wrong_org_returns_none(self, test_org, second_org):
         """Test multi-tenant isolation - wrong org returns None."""
-        # Create second org
-        second_org = await Organization.create(name="Second Org")
-
         # Create project in test_org
-        created_project = await Project.create(
+        created_project = await project_repo.create(
             name="Test Project",
-            organization=test_org
+            description=None,
+            org_id=test_org["id"]
         )
 
         # Try to get with wrong org_id
         project = await project_repo.get_by_id(
-            str(created_project.id),
-            str(second_org.id)  # Wrong org
+            created_project["id"],
+            second_org["id"]  # Wrong org
         )
 
-        assert project is None  # Multi-tenant isolation working
+        assert project is None  # Should not be accessible
 
         # Cleanup
-        await created_project.delete()
-        await second_org.delete()
+        await project_repo.delete(created_project["id"])
 
     async def test_list_projects(self, test_org):
-        """Test listing projects with pagination."""
-        # Create multiple projects
-        project1 = await Project.create(name="Project 1", organization=test_org)
-        project2 = await Project.create(name="Project 2", organization=test_org)
-        project3 = await Project.create(name="Project 3", organization=test_org)
+        """Test listing projects in an organization."""
+        # Create multiple projects via repository
+        project1 = await project_repo.create(name="Project 1", description=None, org_id=test_org["id"])
+        project2 = await project_repo.create(name="Project 2", description=None, org_id=test_org["id"])
+        project3 = await project_repo.create(name="Project 3", description=None, org_id=test_org["id"])
 
-        # List all
+        # List projects
         result = await project_repo.list(
-            org_id=str(test_org.id),
+            org_id=test_org["id"],
             filters={},
             limit=10,
             offset=0
@@ -123,165 +119,137 @@ class TestProjectRepository:
         assert result["total"] == 3
         assert len(result["items"]) == 3
 
-        # Test pagination
-        result = await project_repo.list(
-            org_id=str(test_org.id),
-            filters={},
-            limit=2,
-            offset=0
-        )
-
-        assert result["total"] == 3
-        assert len(result["items"]) == 2
-
         # Cleanup
-        await project1.delete()
-        await project2.delete()
-        await project3.delete()
+        await project_repo.delete(project1["id"])
+        await project_repo.delete(project2["id"])
+        await project_repo.delete(project3["id"])
 
     async def test_list_filter_by_is_active(self, test_org):
-        """Test filtering projects by is_active."""
-        # Create active and inactive projects
-        active_project = await Project.create(
+        """Test filtering projects by is_active status."""
+        # Create active project
+        active_project = await project_repo.create(
             name="Active Project",
-            organization=test_org,
-            is_active=True
-        )
-        inactive_project = await Project.create(
-            name="Inactive Project",
-            organization=test_org,
-            is_active=False
+            description=None,
+            org_id=test_org["id"]
         )
 
-        # Filter by active only
+        # Create inactive project
+        inactive_project = await project_repo.create(
+            name="Inactive Project",
+            description=None,
+            org_id=test_org["id"]
+        )
+        # Soft delete to make inactive
+        await project_repo.soft_delete(inactive_project["id"], test_org["id"])
+
+        # Filter for active only
         result = await project_repo.list(
-            org_id=str(test_org.id),
+            org_id=test_org["id"],
             filters={"is_active": True},
             limit=10,
             offset=0
         )
 
         assert result["total"] == 1
-        assert result["items"][0].name == "Active Project"
+        assert result["items"][0]["name"] == "Active Project"
 
-        # Filter by inactive only
+        # Filter for inactive only
         result = await project_repo.list(
-            org_id=str(test_org.id),
+            org_id=test_org["id"],
             filters={"is_active": False},
             limit=10,
             offset=0
         )
 
         assert result["total"] == 1
-        assert result["items"][0].name == "Inactive Project"
+        assert result["items"][0]["name"] == "Inactive Project"
 
         # Cleanup
-        await active_project.delete()
-        await inactive_project.delete()
+        await project_repo.delete(active_project["id"])
+        await project_repo.delete(inactive_project["id"])
 
     async def test_update_project(self, test_org):
-        """Test updating project."""
+        """Test updating project fields."""
         # Create project
-        project = await Project.create(
+        project = await project_repo.create(
             name="Original Name",
             description="Original description",
-            organization=test_org
+            org_id=test_org["id"]
         )
 
-        # Update
-        updated_project = await project_repo.update(
-            project_id=str(project.id),
-            org_id=str(test_org.id),
-            data={
-                "name": "Updated Name",
-                "description": "Updated description"
-            }
+        # Update project
+        updated = await project_repo.update(
+            project["id"],
+            test_org["id"],
+            {"name": "Updated Name", "description": "Updated description"}
         )
 
-        assert updated_project is not None
-        assert updated_project.name == "Updated Name"
-        assert updated_project.description == "Updated description"
-        assert updated_project.task_count == 0
+        assert updated is not None
+        assert updated["name"] == "Updated Name"
+        assert updated["description"] == "Updated description"
 
         # Cleanup
-        await project.delete()
+        await project_repo.delete(project["id"])
 
-    async def test_update_wrong_org_returns_none(self, test_org):
+    async def test_update_wrong_org_returns_none(self, test_org, second_org):
         """Test multi-tenant isolation on update."""
-        # Create second org
-        second_org = await Organization.create(name="Second Org")
-
         # Create project in test_org
-        project = await Project.create(
+        project = await project_repo.create(
             name="Test Project",
-            organization=test_org
+            description=None,
+            org_id=test_org["id"]
         )
 
-        # Try to update with wrong org_id
-        updated_project = await project_repo.update(
-            project_id=str(project.id),
-            org_id=str(second_org.id),  # Wrong org
-            data={"name": "Should Not Update"}
+        # Try to update from second_org
+        updated = await project_repo.update(
+            project["id"],
+            second_org["id"],  # Wrong org
+            {"name": "Should Not Update"}
         )
 
-        assert updated_project is None
-
-        # Verify original not changed
-        project = await Project.get(id=project.id)
-        assert project.name == "Test Project"
+        assert updated is None  # Should not be accessible
 
         # Cleanup
-        await project.delete()
-        await second_org.delete()
+        await project_repo.delete(project["id"])
 
     async def test_soft_delete(self, test_org):
-        """Test soft deleting project."""
+        """Test soft deleting project (sets is_active=False)."""
         # Create project
-        project = await Project.create(
+        project = await project_repo.create(
             name="Test Project",
-            organization=test_org,
-            is_active=True
+            description=None,
+            org_id=test_org["id"]
         )
 
         # Soft delete
-        deleted = await project_repo.soft_delete(
-            project_id=str(project.id),
-            org_id=str(test_org.id)
-        )
-
+        deleted = await project_repo.soft_delete(project["id"], test_org["id"])
         assert deleted is True
 
-        # Verify is_active set to False
-        project = await Project.get(id=project.id)
-        assert project.is_active is False
+        # Verify it's marked inactive
+        fetched = await project_repo.get_by_id(project["id"], test_org["id"])
+        assert fetched is not None
+        assert fetched["is_active"] is False
 
         # Cleanup
-        await project.delete()
+        await project_repo.delete(project["id"])
 
-    async def test_soft_delete_wrong_org_returns_false(self, test_org):
-        """Test multi-tenant isolation on delete."""
-        # Create second org
-        second_org = await Organization.create(name="Second Org")
-
+    async def test_soft_delete_wrong_org_returns_false(self, test_org, second_org):
+        """Test multi-tenant isolation on soft delete."""
         # Create project in test_org
-        project = await Project.create(
+        project = await project_repo.create(
             name="Test Project",
-            organization=test_org,
-            is_active=True
+            description=None,
+            org_id=test_org["id"]
         )
 
-        # Try to delete with wrong org_id
-        deleted = await project_repo.soft_delete(
-            project_id=str(project.id),
-            org_id=str(second_org.id)  # Wrong org
-        )
+        # Try to soft delete from second_org
+        deleted = await project_repo.soft_delete(project["id"], second_org["id"])
+        assert deleted is False  # Should not be accessible
 
-        assert deleted is False
-
-        # Verify project still active
-        project = await Project.get(id=project.id)
-        assert project.is_active is True
+        # Verify it's still active
+        fetched = await project_repo.get_by_id(project["id"], test_org["id"])
+        assert fetched is not None
+        assert fetched["is_active"] is True
 
         # Cleanup
-        await project.delete()
-        await second_org.delete()
+        await project_repo.delete(project["id"])

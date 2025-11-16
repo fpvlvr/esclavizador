@@ -19,11 +19,12 @@ import pytest_asyncio
 from tortoise import Tortoise
 from httpx import AsyncClient, ASGITransport
 from app.main import app
-from app.models.user import User, UserRole
-from app.models.organization import Organization
-from app.models.project import Project
-from app.models.task import Task
+from app.models.user import UserRole
 from app.core.security import hash_password
+from app.repositories.user_repo import user_repo
+from app.repositories.organization_repo import organization_repo
+from app.repositories.project_repo import project_repo
+from app.repositories.task_repo import task_repo
 
 
 @pytest.fixture(scope="session")
@@ -98,11 +99,11 @@ async def test_org():
     Create test organization.
 
     Returns:
-        Organization instance with name "Test Org"
+        OrganizationData dict with name "Test Org"
     """
-    org = await Organization.create(name="Test Org")
+    org = await organization_repo.create_organization(name="Test Org")
     yield org
-    await org.delete()
+    await organization_repo.delete(org["id"])
 
 
 @pytest_asyncio.fixture
@@ -116,20 +117,19 @@ async def test_user(test_org):
         role: SLAVE
 
     Args:
-        test_org: Organization fixture
+        test_org: Organization fixture (OrganizationData dict)
 
     Returns:
-        User instance
+        UserData dict
     """
-    user = await User.create(
+    user = await user_repo.create_user(
         email="test@example.com",
         password_hash=hash_password("TestPass123!"),
         role=UserRole.SLAVE,
-        organization=test_org,
-        is_active=True
+        organization_id=str(test_org["id"])
     )
     yield user
-    await user.delete()
+    await user_repo.delete(user["id"])
 
 
 @pytest_asyncio.fixture
@@ -143,62 +143,59 @@ async def test_master(test_org):
         role: MASTER
 
     Args:
-        test_org: Organization fixture
+        test_org: Organization fixture (OrganizationData dict)
 
     Returns:
-        User instance
+        UserData dict
     """
-    user = await User.create(
+    user = await user_repo.create_user(
         email="master@example.com",
         password_hash=hash_password("MasterPass123!"),
         role=UserRole.MASTER,
-        organization=test_org,
-        is_active=True
+        organization_id=str(test_org["id"])
     )
     yield user
-    await user.delete()
+    await user_repo.delete(user["id"])
 
 
 @pytest_asyncio.fixture
 async def test_project(test_org):
     """
-    Create test project.
+    Create test project via repository.
 
     Args:
-        test_org: Organization fixture
+        test_org: Organization fixture (OrganizationData dict)
 
     Returns:
-        Project instance
+        ProjectData dict
     """
-    project = await Project.create(
+    project = await project_repo.create(
         name="Test Project",
         description="Test project description",
-        organization=test_org,
-        is_active=True
+        org_id=test_org["id"]
     )
     yield project
-    await project.delete()
+    await project_repo.delete(project["id"])
 
 
 @pytest_asyncio.fixture
 async def test_task(test_project):
     """
-    Create test task.
+    Create test task via repository.
 
     Args:
-        test_project: Project fixture
+        test_project: Project fixture (ProjectData dict)
 
     Returns:
-        Task instance
+        TaskData dict
     """
-    task = await Task.create(
+    task = await task_repo.create(
         name="Test Task",
         description="Test task description",
-        project=test_project,
-        is_active=True
+        project_id=test_project["id"]
     )
     yield task
-    await task.delete()
+    await task_repo.delete(task["id"])
 
 
 @pytest_asyncio.fixture
@@ -207,11 +204,11 @@ async def second_org():
     Create second organization for multi-tenant isolation tests.
 
     Returns:
-        Organization instance with name "Second Org"
+        OrganizationData dict with name "Second Org"
     """
-    org = await Organization.create(name="Second Org")
+    org = await organization_repo.create_organization(name="Second Org")
     yield org
-    await org.delete()
+    await organization_repo.delete(org["id"])
 
 
 @pytest_asyncio.fixture
@@ -220,14 +217,15 @@ async def second_org_project(second_org):
     Create project in second organization for isolation tests.
 
     Args:
-        second_org: Second organization fixture
+        second_org: Second organization fixture (OrganizationData dict)
 
     Returns:
-        Project instance in second_org
+        ProjectData dict in second_org
     """
-    project = await Project.create(
+    project = await project_repo.create(
         name="Second Org Project",
-        organization=second_org
+        description=None,
+        org_id=second_org["id"]
     )
     yield project
-    await project.delete()
+    await project_repo.delete(project["id"])

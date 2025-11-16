@@ -1,5 +1,7 @@
 """
 Refresh token repository for data access.
+
+Returns RefreshTokenData TypedDicts for ORM independence.
 """
 
 from typing import Optional
@@ -8,37 +10,55 @@ from datetime import datetime, timezone
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.repositories.base import BaseRepository
+from app.domain.entities import RefreshTokenData
 
 
-class RefreshTokenRepository(BaseRepository[RefreshToken]):
+class RefreshTokenRepository(BaseRepository[RefreshToken, RefreshTokenData]):
     """Repository for refresh token data access."""
 
     model = RefreshToken
 
+    def _to_dict(self, token: RefreshToken) -> RefreshTokenData:
+        """Convert RefreshToken ORM instance to RefreshTokenData dict."""
+        return {
+            "id": token.id,
+            "user_id": token.user_id,
+            "token_hash": token.token_hash,
+            "expires_at": token.expires_at,
+            "revoked_at": token.revoked_at,
+            "created_at": token.created_at,
+        }
+
     async def create_token(
         self,
-        user: User,
+        user_id: str,  # ID, not ORM object!
         token_hash: str,
         expires_at: datetime
-    ) -> RefreshToken:
+    ) -> RefreshTokenData:
         """
         Store refresh token in database.
 
         Args:
-            user: User instance
+            user_id: User UUID
             token_hash: SHA-256 hash of refresh token
             expires_at: Expiration timestamp
 
         Returns:
-            Created RefreshToken instance
+            Created refresh token as RefreshTokenData dict
         """
-        return await self.create(
+        # Repository handles ORM internally
+        user = await User.get(id=user_id)
+
+        token = await self.create(
             user=user,
             token_hash=token_hash,
             expires_at=expires_at
         )
 
-    async def get_by_hash(self, token_hash: str) -> Optional[RefreshToken]:
+        # Convert ORM → RefreshTokenData dict using _to_dict
+        return self._to_dict(token)
+
+    async def get_by_hash(self, token_hash: str) -> Optional[RefreshTokenData]:
         """
         Get refresh token by hash.
 
@@ -50,13 +70,19 @@ class RefreshTokenRepository(BaseRepository[RefreshToken]):
             token_hash: SHA-256 hash of refresh token
 
         Returns:
-            RefreshToken if found and valid, None otherwise
+            RefreshTokenData dict if found and valid, None otherwise
         """
-        return await RefreshToken.filter(
+        token = await RefreshToken.filter(
             token_hash=token_hash,
             revoked_at__isnull=True,  # Not revoked
             expires_at__gt=datetime.now(timezone.utc)  # Not expired
         ).first()
+
+        if not token:
+            return None
+
+        # Convert ORM → RefreshTokenData dict using _to_dict
+        return self._to_dict(token)
 
     async def revoke_token(self, token_hash: str) -> bool:
         """

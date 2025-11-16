@@ -6,6 +6,8 @@ Handles:
 - User authentication (login)
 - JWT token generation and refresh
 - Logout (token revocation)
+
+ORM-free service - works with TypedDict entities only.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -14,7 +16,8 @@ import jwt
 from fastapi import HTTPException, status
 from tortoise.transactions import in_transaction
 
-from app.models.user import User, UserRole
+from app.models.user import UserRole
+from app.domain.entities import UserData
 from app.core.security import (
     hash_password,
     verify_password,
@@ -38,7 +41,7 @@ class AuthService:
         password: str,
         role: UserRole,
         organization_name: str
-    ) -> User:
+    ) -> UserData:
         """
         Register new user with new organization.
 
@@ -48,7 +51,7 @@ class AuthService:
         3. Create new organization (always new)
         4. Hash password
         5. Create user linked to new organization
-        6. Return user object
+        6. Return user data dict
 
         Args:
             email: User email
@@ -57,7 +60,7 @@ class AuthService:
             organization_name: Organization name
 
         Returns:
-            Created user
+            Created user as UserData dict
 
         Raises:
             HTTPException(409): Email already registered OR organization name already exists
@@ -85,18 +88,18 @@ class AuthService:
         # Create organization and user in transaction
         try:
             async with in_transaction():
-                # Create new organization
-                org = await organization_repo.create_organization(name=organization_name)
+                # Create new organization (returns OrganizationData dict)
+                org_data = await organization_repo.create_organization(name=organization_name)
 
-                # Create user
-                user = await user_repo.create_user(
+                # Create user (returns UserData dict)
+                user_data = await user_repo.create_user(
                     email=email,
                     password_hash=hashed_pwd,
                     role=role,
-                    organization=org
+                    organization_id=str(org_data["id"])  # Pass ID, not ORM object
                 )
 
-                return user
+                return user_data
 
         except Exception as e:
             # Re-raise with more context
@@ -111,7 +114,7 @@ class AuthService:
         self,
         email: str,
         password: str
-    ) -> Tuple[User, str, str]:
+    ) -> Tuple[UserData, str, str]:
         """
         Authenticate user and generate tokens.
 
@@ -122,67 +125,63 @@ class AuthService:
         4. Generate access token
         5. Generate refresh token
         6. Store refresh token in DB
-        7. Return (user, access_token, refresh_token)
+        7. Return (user_data, access_token, refresh_token)
 
         Args:
             email: User email
             password: Plain text password
 
         Returns:
-            (user, access_token, refresh_token)
+            (UserData dict, access_token, refresh_token)
 
         Raises:
             HTTPException(401): Invalid credentials
             HTTPException(403): Inactive account
         """
-        # Get user by email
-        user = await user_repo.get_by_email(email)
-        if not user:
+        # Get user by email (returns UserData dict)
+        user_data = await user_repo.get_by_email(email)
+        if not user_data:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
             )
 
         # Verify password
-        if not verify_password(password, user.password_hash):
+        if not verify_password(password, user_data["password_hash"]):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
             )
 
         # Check if user is active
-        if not user.is_active:
+        if not user_data["is_active"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Inactive account"
             )
 
-        # Ensure organization is loaded
-        if not user.organization_id:
-            await user.fetch_related("organization")
-
         # Generate access token
         access_token = create_access_token(
-            user_id=str(user.id),
-            email=user.email,
-            role=user.role.value,
-            org_id=str(user.organization_id)
+            user_id=str(user_data["id"]),
+            email=user_data["email"],
+            role=user_data["role"],
+            org_id=str(user_data["organization_id"])
         )
 
         # Generate refresh token
-        refresh_token, jti = create_refresh_token(user_id=str(user.id))
+        refresh_token, jti = create_refresh_token(user_id=str(user_data["id"]))
 
         # Store refresh token in database (hashed)
         token_hash = hash_token(refresh_token)
         expires_at = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
 
         await refresh_token_repo.create_token(
-            user=user,
+            user_id=str(user_data["id"]),  # Pass ID, not ORM object
             token_hash=token_hash,
             expires_at=expires_at
         )
 
-        return user, access_token, refresh_token
+        return user_data, access_token, refresh_token
 
     async def refresh_access_token(self, refresh_token: str) -> str:
         """
@@ -216,7 +215,7 @@ class AuthService:
                     detail="Invalid token type"
                 )
 
-            # Hash token and check in database
+            # Hash token and check in database (returns RefreshTokenData dict)
             token_hash = hash_token(refresh_token)
             db_token = await refresh_token_repo.get_by_hash(token_hash)
 
@@ -226,18 +225,18 @@ class AuthService:
                     detail="Invalid or expired refresh token"
                 )
 
-            # Get user
+            # Get user (returns UserData dict)
             user_id = payload.get("sub")
-            user = await user_repo.get_by_id_with_org(user_id)
+            user_data = await user_repo.get_by_id(user_id)
 
-            if not user:
+            if not user_data:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="User not found"
                 )
 
             # Check if user is active
-            if not user.is_active:
+            if not user_data["is_active"]:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Inactive account"
@@ -245,10 +244,10 @@ class AuthService:
 
             # Generate new access token
             access_token = create_access_token(
-                user_id=str(user.id),
-                email=user.email,
-                role=user.role.value,
-                org_id=str(user.organization_id)
+                user_id=str(user_data["id"]),
+                email=user_data["email"],
+                role=user_data["role"],
+                org_id=str(user_data["organization_id"])
             )
 
             return access_token

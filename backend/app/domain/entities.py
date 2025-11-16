@@ -17,38 +17,25 @@ from datetime import datetime
 
 
 class UserData(TypedDict):
-    """
-    User entity data.
 
-    Represents a user independent of ORM or API representation.
-    """
     id: UUID
     email: str
-    role: str  # "MASTER" or "SLAVE"
+    password_hash: str  # Argon2id hashed password
+    role: str  # "master" or "slave"
     organization_id: UUID
     is_active: bool
     created_at: datetime
 
 
 class OrganizationData(TypedDict):
-    """
-    Organization entity data.
 
-    Represents an organization independent of ORM or API representation.
-    """
     id: UUID
     name: str
-    is_active: bool
     created_at: datetime
 
 
 class ProjectData(TypedDict):
-    """
-    Project entity data.
 
-    Represents a project with computed task_count field.
-    Returned by repository layer with all necessary data for API responses.
-    """
     id: UUID
     name: str
     description: Optional[str]
@@ -59,12 +46,7 @@ class ProjectData(TypedDict):
 
 
 class TaskData(TypedDict):
-    """
-    Task entity data.
 
-    Represents a task with project_name extracted from relation.
-    Returned by repository layer with all necessary data for API responses.
-    """
     id: UUID
     name: str
     description: Optional[str]
@@ -75,14 +57,10 @@ class TaskData(TypedDict):
 
 
 class RefreshTokenData(TypedDict):
-    """
-    Refresh token entity data.
 
-    Represents a refresh token record.
-    """
     id: UUID
     user_id: UUID
     token_hash: str
     expires_at: datetime
-    revoked: bool
+    revoked_at: Optional[datetime]
     created_at: datetime

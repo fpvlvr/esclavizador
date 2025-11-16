@@ -5,6 +5,8 @@ Provides dependency injection functions for:
 - Extracting current user from JWT token
 - Checking user is active
 - Requiring specific roles (master/slave)
+
+ORM-free dependencies - work with UserData TypedDicts.
 """
 
 from typing import Annotated
@@ -14,7 +16,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.core.security import decode_token
 from app.repositories.user_repo import user_repo
-from app.models.user import User, UserRole
+from app.domain.entities import UserData
 
 
 # HTTP Bearer security scheme for extracting JWT from Authorization header
@@ -23,7 +25,7 @@ security = HTTPBearer()
 
 async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]
-) -> User:
+) -> UserData:
     """
     Get current authenticated user from JWT token.
 
@@ -34,7 +36,7 @@ async def get_current_user(
         credentials: HTTP Bearer credentials (injected by FastAPI)
 
     Returns:
-        Current user
+        Current user as UserData dict
 
     Raises:
         HTTPException(401): Invalid or expired token, or user not found
@@ -54,16 +56,16 @@ async def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # Fetch user from database
-        user = await user_repo.get_by_id(user_id)
-        if user is None:
+        # Fetch user from database (returns UserData dict)
+        user_data = await user_repo.get_by_id(user_id)
+        if user_data is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        return user
+        return user_data
 
     except jwt.ExpiredSignatureError:
         raise HTTPException(
@@ -80,21 +82,21 @@ async def get_current_user(
 
 
 async def get_current_active_user(
-    current_user: Annotated[User, Depends(get_current_user)]
-) -> User:
+    current_user: Annotated[UserData, Depends(get_current_user)]
+) -> UserData:
     """
     Get current active user (checks is_active flag).
 
     Args:
-        current_user: Current user (injected by get_current_user)
+        current_user: Current user dict (injected by get_current_user)
 
     Returns:
-        Current active user
+        Current active user as UserData dict
 
     Raises:
         HTTPException(403): Account inactive
     """
-    if not current_user.is_active:
+    if not current_user["is_active"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive account"
@@ -103,8 +105,8 @@ async def get_current_active_user(
 
 
 async def require_master_role(
-    current_user: Annotated[User, Depends(get_current_active_user)]
-) -> User:
+    current_user: Annotated[UserData, Depends(get_current_active_user)]
+) -> UserData:
     """
     Require master role for endpoint access.
 
@@ -112,15 +114,15 @@ async def require_master_role(
     accessible to master users (admins).
 
     Args:
-        current_user: Current active user (injected by get_current_active_user)
+        current_user: Current active user dict (injected by get_current_active_user)
 
     Returns:
-        Current master user
+        Current master user as UserData dict
 
     Raises:
         HTTPException(403): User is not a master
     """
-    if current_user.role != UserRole.MASTER:
+    if current_user["role"] != "MASTER":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Master role required"

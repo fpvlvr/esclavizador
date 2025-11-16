@@ -6,6 +6,7 @@ Returns TypedDict entities for ORM independence.
 """
 
 from typing import Optional
+from uuid import UUID
 from tortoise.functions import Count
 
 from app.models.project import Project
@@ -13,10 +14,22 @@ from app.repositories.base import BaseRepository
 from app.domain.entities import ProjectData
 
 
-class ProjectRepository(BaseRepository[Project]):
+class ProjectRepository(BaseRepository[Project, ProjectData]):
     """Repository for project data access."""
 
     model = Project
+
+    def _to_dict(self, project: Project) -> ProjectData:
+        """Convert Project ORM instance to ProjectData dict."""
+        return {
+            "id": project.id,
+            "name": project.name,
+            "description": project.description,
+            "organization_id": project.organization_id,
+            "is_active": project.is_active,
+            "created_at": project.created_at,
+            "task_count": getattr(project, 'task_count', 0),
+        }
 
     async def create(
         self,
@@ -91,7 +104,7 @@ class ProjectRepository(BaseRepository[Project]):
 
     async def list(
         self,
-        org_id: str,
+        org_id: UUID | str,
         filters: dict,
         limit: int,
         offset: int
@@ -145,7 +158,7 @@ class ProjectRepository(BaseRepository[Project]):
     async def update(
         self,
         project_id: str,
-        org_id: str,
+        org_id: UUID | str,
         data: dict
     ) -> Optional[ProjectData]:
         """
@@ -182,16 +195,8 @@ class ProjectRepository(BaseRepository[Project]):
             task_count=Count('tasks')
         ).first()
 
-        # Convert ORM → ProjectData dict
-        return {
-            "id": project.id,
-            "name": project.name,
-            "description": project.description,
-            "organization_id": project.organization_id,
-            "is_active": project.is_active,
-            "created_at": project.created_at,
-            "task_count": getattr(project, 'task_count', 0),
-        }
+        # Convert ORM → ProjectData dict using _to_dict
+        return self._to_dict(project)
 
     async def soft_delete(
         self,

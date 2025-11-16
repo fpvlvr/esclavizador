@@ -8,7 +8,6 @@ import pytest
 from tortoise.exceptions import IntegrityError
 
 from app.repositories.organization_repo import organization_repo
-from app.models.organization import Organization
 
 
 class TestOrganizationRepository:
@@ -19,12 +18,12 @@ class TestOrganizationRepository:
         org = await organization_repo.create_organization(name="New Test Org")
 
         assert org is not None
-        assert org.id is not None
-        assert org.name == "New Test Org"
-        assert org.created_at is not None
+        assert org["id"] is not None
+        assert org["name"] == "New Test Org"
+        assert org["created_at"] is not None
 
         # Cleanup
-        await org.delete()
+        await organization_repo.delete(org["id"])
 
     async def test_create_duplicate_organization_name(self):
         """Test that duplicate org names raise IntegrityError."""
@@ -35,23 +34,23 @@ class TestOrganizationRepository:
             await organization_repo.create_organization(name="Duplicate Org")
 
         # Cleanup
-        org = await Organization.filter(name="Duplicate Org").first()
+        org = await organization_repo.get_by_name("Duplicate Org")
         if org:
-            await org.delete()
+            await organization_repo.delete(org["id"])
 
     async def test_get_by_id(self):
         """Test getting organization by ID."""
         org = await organization_repo.create_organization(name="ID Test Org")
 
         # Get by ID
-        fetched_org = await organization_repo.get_by_id(str(org.id))
+        fetched_org = await organization_repo.get_by_id(org["id"])
 
         assert fetched_org is not None
-        assert fetched_org.id == org.id
-        assert fetched_org.name == "ID Test Org"
+        assert fetched_org["id"] == org["id"]
+        assert fetched_org["name"] == "ID Test Org"
 
         # Cleanup
-        await org.delete()
+        await organization_repo.delete(org["id"])
 
     async def test_get_by_id_not_found(self):
         """Test getting non-existent organization returns None."""
@@ -65,14 +64,14 @@ class TestOrganizationRepository:
         # Exact match should work
         result = await organization_repo.get_by_name("CaseSensitive", case_sensitive=True)
         assert result is not None
-        assert result.id == org.id
+        assert result["id"] == org["id"]
 
         # Different case should NOT work
         result = await organization_repo.get_by_name("casesensitive", case_sensitive=True)
         assert result is None
 
         # Cleanup
-        await org.delete()
+        await organization_repo.delete(org["id"])
 
     async def test_get_by_name_case_insensitive(self):
         """Test getting organization by name (case-insensitive, default)."""
@@ -86,12 +85,12 @@ class TestOrganizationRepository:
         assert result1 is not None
         assert result2 is not None
         assert result3 is not None
-        assert result1.id == org.id
-        assert result2.id == org.id
-        assert result3.id == org.id
+        assert result1["id"] == org["id"]
+        assert result2["id"] == org["id"]
+        assert result3["id"] == org["id"]
 
         # Cleanup
-        await org.delete()
+        await organization_repo.delete(org["id"])
 
     async def test_get_by_name_not_found(self):
         """Test getting non-existent organization returns None."""
@@ -103,11 +102,11 @@ class TestOrganizationRepository:
         org = await organization_repo.create_organization(name="Delete Test")
 
         # Delete
-        deleted = await organization_repo.delete(str(org.id))
+        deleted = await organization_repo.delete(org["id"])
         assert deleted is True
 
         # Verify deletion
-        result = await organization_repo.get_by_id(str(org.id))
+        result = await organization_repo.get_by_id(org["id"])
         assert result is None
 
     async def test_delete_nonexistent_organization(self):

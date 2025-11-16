@@ -19,10 +19,10 @@ from app.services.task_service import task_service
 class TestTaskService:
     """Test TaskService methods."""
 
-    async def test_create_task(self, test_master, test_org):
+    async def test_create_task(self, test_master, test_org_orm):
         """Test creating task with valid project."""
         # Create project
-        project = await Project.create(name="Test Project", organization=test_org)
+        project = await Project.create(name="Test Project", organization=test_org_orm)
 
         # Create task
         data = TaskCreate(
@@ -33,14 +33,14 @@ class TestTaskService:
 
         task = await task_service.create_task(test_master, data)
 
-        assert task.id is not None
-        assert task.name == "New Task"
-        assert task.description == "Test description"
-        assert task.project_id == project.id
-        assert task.project.name == "Test Project"  # Prefetched
+        assert task["id"] is not None
+        assert task["name"] == "New Task"
+        assert task["description"] == "Test description"
+        assert task["project_id"] == project.id
+        assert task["project_name"] == "Test Project"  # Extracted from project
 
-        # Cleanup
-        await task.delete()
+        # Cleanup - task is dict, delete via ORM
+        await Task.get(id=task["id"]).delete()
         await project.delete()
 
     async def test_create_task_invalid_project(self, test_master):
@@ -56,13 +56,12 @@ class TestTaskService:
         assert exc_info.value.status_code == 404
         assert exc_info.value.detail == "Project not found"
 
-    async def test_create_task_project_wrong_org(self, test_master, test_org):
+    async def test_create_task_project_wrong_org(self, test_master, second_org_orm):
         """Test creating task with project from different org."""
-        # Create second org with project
-        second_org = await Organization.create(name="Second Org")
+        # Create project in second org
         project = await Project.create(
             name="Other Org Project",
-            organization=second_org
+            organization=second_org_orm
         )
 
         # Try to create task as test_master (different org)
@@ -79,12 +78,11 @@ class TestTaskService:
 
         # Cleanup
         await project.delete()
-        await second_org.delete()
 
-    async def test_list_tasks(self, test_user, test_org):
+    async def test_list_tasks(self, test_user, test_org_orm):
         """Test listing tasks."""
         # Create project with tasks
-        project = await Project.create(name="Test Project", organization=test_org)
+        project = await Project.create(name="Test Project", organization=test_org_orm)
         task1 = await Task.create(name="Task 1", project=project)
         task2 = await Task.create(name="Task 2", project=project)
 
@@ -98,18 +96,18 @@ class TestTaskService:
 
         assert result["total"] == 2
         assert len(result["items"]) == 2
-        assert result["items"][0].project.name == "Test Project"  # Prefetched
+        assert result["items"][0]["project_name"] == "Test Project"  # Extracted from project
 
         # Cleanup
         await task1.delete()
         await task2.delete()
         await project.delete()
 
-    async def test_list_tasks_filter_by_project(self, test_user, test_org):
+    async def test_list_tasks_filter_by_project(self, test_user, test_org_orm):
         """Test filtering tasks by project_id."""
         # Create two projects with tasks
-        project1 = await Project.create(name="Project 1", organization=test_org)
-        project2 = await Project.create(name="Project 2", organization=test_org)
+        project1 = await Project.create(name="Project 1", organization=test_org_orm)
+        project2 = await Project.create(name="Project 2", organization=test_org_orm)
 
         task1 = await Task.create(name="Task 1", project=project1)
         task2 = await Task.create(name="Task 2", project=project1)
@@ -125,7 +123,7 @@ class TestTaskService:
         )
 
         assert result["total"] == 2
-        assert all(t.project_id == project1.id for t in result["items"])
+        assert all(t["project_id"] == project1.id for t in result["items"])
 
         # Cleanup
         await task1.delete()
@@ -148,10 +146,10 @@ class TestTaskService:
         assert exc_info.value.status_code == 404
         assert exc_info.value.detail == "Project not found"
 
-    async def test_list_tasks_filter_by_is_active(self, test_user, test_org):
+    async def test_list_tasks_filter_by_is_active(self, test_user, test_org_orm):
         """Test filtering tasks by is_active."""
         # Create project with active and inactive tasks
-        project = await Project.create(name="Test Project", organization=test_org)
+        project = await Project.create(name="Test Project", organization=test_org_orm)
         active = await Task.create(name="Active", project=project, is_active=True)
         inactive = await Task.create(name="Inactive", project=project, is_active=False)
 
@@ -165,17 +163,17 @@ class TestTaskService:
         )
 
         assert result["total"] == 1
-        assert result["items"][0].name == "Active"
+        assert result["items"][0]["name"] == "Active"
 
         # Cleanup
         await active.delete()
         await inactive.delete()
         await project.delete()
 
-    async def test_get_task_success(self, test_user, test_org):
+    async def test_get_task_success(self, test_user, test_org_orm):
         """Test getting task by ID with project_name."""
         # Create project and task
-        project = await Project.create(name="Test Project", organization=test_org)
+        project = await Project.create(name="Test Project", organization=test_org_orm)
         created = await Task.create(
             name="Test Task",
             description="Test desc",
@@ -185,9 +183,9 @@ class TestTaskService:
         # Get it
         task = await task_service.get_task(test_user, str(created.id))
 
-        assert task.id == created.id
-        assert task.name == "Test Task"
-        assert task.project.name == "Test Project"
+        assert task["id"] == created.id
+        assert task["name"] == "Test Task"
+        assert task["project_name"] == "Test Project"
 
         # Cleanup
         await created.delete()
@@ -204,11 +202,10 @@ class TestTaskService:
         assert exc_info.value.status_code == 404
         assert exc_info.value.detail == "Task not found"
 
-    async def test_get_task_wrong_org_raises_404(self, test_user):
+    async def test_get_task_wrong_org_raises_404(self, test_user, second_org_orm):
         """Test multi-tenant isolation raises 404."""
-        # Create second org with project and task
-        second_org = await Organization.create(name="Second Org")
-        project = await Project.create(name="Other Project", organization=second_org)
+        # Create project and task in second org
+        project = await Project.create(name="Other Project", organization=second_org_orm)
         task = await Task.create(name="Other Task", project=project)
 
         # Try to get as test_user (different org)
@@ -220,12 +217,11 @@ class TestTaskService:
         # Cleanup
         await task.delete()
         await project.delete()
-        await second_org.delete()
 
-    async def test_update_task(self, test_master, test_org):
+    async def test_update_task(self, test_master, test_org_orm):
         """Test updating task."""
         # Create project and task
-        project = await Project.create(name="Test Project", organization=test_org)
+        project = await Project.create(name="Test Project", organization=test_org_orm)
         task = await Task.create(
             name="Original",
             description="Original desc",
@@ -243,18 +239,18 @@ class TestTaskService:
             data
         )
 
-        assert updated.name == "Updated"
-        assert updated.description == "Updated desc"
-        assert updated.project.name == "Test Project"
+        assert updated["name"] == "Updated"
+        assert updated["description"] == "Updated desc"
+        assert updated["project_name"] == "Test Project"
 
         # Cleanup
         await task.delete()
         await project.delete()
 
-    async def test_update_task_partial(self, test_master, test_org):
+    async def test_update_task_partial(self, test_master, test_org_orm):
         """Test partial update."""
         # Create project and task
-        project = await Project.create(name="Test Project", organization=test_org)
+        project = await Project.create(name="Test Project", organization=test_org_orm)
         task = await Task.create(
             name="Original",
             description="Original desc",
@@ -269,8 +265,8 @@ class TestTaskService:
             data
         )
 
-        assert updated.name == "Updated Name"
-        assert updated.description == "Original desc"  # Unchanged
+        assert updated["name"] == "Updated Name"
+        assert updated["description"] == "Original desc"  # Unchanged
 
         # Cleanup
         await task.delete()
@@ -289,11 +285,10 @@ class TestTaskService:
 
         assert exc_info.value.status_code == 404
 
-    async def test_update_wrong_org_raises_404(self, test_master):
+    async def test_update_wrong_org_raises_404(self, test_master, second_org_orm):
         """Test multi-tenant isolation on update."""
-        # Create second org with project and task
-        second_org = await Organization.create(name="Second Org")
-        project = await Project.create(name="Other Project", organization=second_org)
+        # Create project and task in second org
+        project = await Project.create(name="Other Project", organization=second_org_orm)
         task = await Task.create(name="Other Task", project=project)
 
         # Try to update as test_master (different org)
@@ -306,12 +301,11 @@ class TestTaskService:
         # Cleanup
         await task.delete()
         await project.delete()
-        await second_org.delete()
 
-    async def test_delete_task(self, test_master, test_org):
+    async def test_delete_task(self, test_master, test_org_orm):
         """Test soft deleting task."""
         # Create project and task
-        project = await Project.create(name="Test Project", organization=test_org)
+        project = await Project.create(name="Test Project", organization=test_org_orm)
         task = await Task.create(name="Test Task", project=project, is_active=True)
 
         # Delete
@@ -337,11 +331,10 @@ class TestTaskService:
 
         assert exc_info.value.status_code == 404
 
-    async def test_delete_wrong_org_raises_404(self, test_master):
+    async def test_delete_wrong_org_raises_404(self, test_master, second_org_orm):
         """Test multi-tenant isolation on delete."""
-        # Create second org with project and task
-        second_org = await Organization.create(name="Second Org")
-        project = await Project.create(name="Other Project", organization=second_org)
+        # Create project and task in second org
+        project = await Project.create(name="Other Project", organization=second_org_orm)
         task = await Task.create(name="Other Task", project=project)
 
         # Try to delete as test_master (different org)
@@ -357,4 +350,3 @@ class TestTaskService:
         # Cleanup
         await task.delete()
         await project.delete()
-        await second_org.delete()

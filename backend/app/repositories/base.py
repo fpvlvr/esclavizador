@@ -1,64 +1,92 @@
 """
 Base repository with common CRUD operations.
 
-Uses generic typing to provide type-safe repository pattern.
+ORM-independent base repository that returns TypedDict entities.
+Subclasses must implement _to_dict() for entity conversion.
 """
 
-from typing import TypeVar, Generic, Type, Optional
+from typing import TypeVar, Generic, Type, Optional, Dict, Any
+from abc import ABC, abstractmethod
+from uuid import UUID
 from tortoise.models import Model
 
 
 ModelType = TypeVar("ModelType", bound=Model)
+EntityType = TypeVar("EntityType", bound=Dict[str, Any])
 
 
-class BaseRepository(Generic[ModelType]):
+class BaseRepository(Generic[ModelType, EntityType], ABC):
     """
     Abstract base repository with common CRUD operations.
 
+    Returns TypedDict entities instead of ORM objects for ORM independence.
+    Subclasses must implement _to_dict() to convert ORM → TypedDict.
+
     Usage:
-        class UserRepository(BaseRepository[User]):
+        class UserRepository(BaseRepository[User, UserData]):
             model = User
 
-            # Add model-specific methods here
+            def _to_dict(self, user: User) -> UserData:
+                return {
+                    "id": user.id,
+                    "email": user.email,
+                    # ... other fields
+                }
     """
 
     model: Type[ModelType]
 
-    async def get_by_id(self, id: str) -> Optional[ModelType]:
+    @abstractmethod
+    def _to_dict(self, instance: ModelType) -> EntityType:
         """
-        Get model instance by ID.
+        Convert ORM instance to TypedDict entity.
+
+        Must be implemented by subclass to define entity structure.
 
         Args:
-            id: UUID string
+            instance: ORM model instance
 
         Returns:
-            Model instance if found, None otherwise
+            TypedDict entity
         """
-        return await self.model.get_or_none(id=id)
+        pass
+
+    async def get_by_id(self, id: UUID | str) -> Optional[EntityType]:
+        """
+        Get entity by ID.
+
+        Args:
+            id: UUID or UUID string
+
+        Returns:
+            TypedDict entity if found, None otherwise
+        """
+        instance = await self.model.get_or_none(id=id)
+        return self._to_dict(instance) if instance else None
 
     async def create(self, **kwargs) -> ModelType:
         """
-        Create new model instance.
+        Create new model instance (returns ORM for internal use).
 
         Args:
             **kwargs: Model field values
 
         Returns:
-            Created model instance
+            Created ORM model instance (for internal conversion)
         """
         return await self.model.create(**kwargs)
 
-    async def delete(self, id: str) -> bool:
+    async def delete(self, id: UUID | str) -> bool:
         """
-        Delete model instance by ID.
+        Delete entity by ID.
 
         Args:
-            id: UUID string
+            id: UUID or UUID string
 
         Returns:
             True if deleted, False if not found
         """
-        instance = await self.get_by_id(id)
+        instance = await self.model.get_or_none(id=id)
         if instance:
             await instance.delete()
             return True

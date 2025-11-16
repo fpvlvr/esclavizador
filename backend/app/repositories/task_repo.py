@@ -14,10 +14,22 @@ from app.repositories.base import BaseRepository
 from app.domain.entities import TaskData
 
 
-class TaskRepository(BaseRepository[Task]):
+class TaskRepository(BaseRepository[Task, TaskData]):
     """Repository for task data access."""
 
     model = Task
+
+    def _to_dict(self, task: Task) -> TaskData:
+        """Convert Task ORM instance to TaskData dict."""
+        return {
+            "id": task.id,
+            "name": task.name,
+            "description": task.description,
+            "project_id": task.project_id,
+            "project_name": task.project.name,
+            "is_active": task.is_active,
+            "created_at": task.created_at,
+        }
 
     async def create(
         self,
@@ -48,16 +60,8 @@ class TaskRepository(BaseRepository[Task]):
         # Prefetch project for project_name extraction
         await task.fetch_related('project')
 
-        # Convert ORM → TaskData dict
-        return {
-            "id": task.id,
-            "name": task.name,
-            "description": task.description,
-            "project_id": task.project_id,
-            "project_name": task.project.name,
-            "is_active": task.is_active,
-            "created_at": task.created_at,
-        }
+        # Convert ORM → TaskData dict using _to_dict
+        return self._to_dict(task)
 
     async def get_by_id(
         self,
@@ -82,20 +86,12 @@ class TaskRepository(BaseRepository[Task]):
         if not task:
             return None
 
-        # Convert ORM → TaskData dict
-        return {
-            "id": task.id,
-            "name": task.name,
-            "description": task.description,
-            "project_id": task.project_id,
-            "project_name": task.project.name,
-            "is_active": task.is_active,
-            "created_at": task.created_at,
-        }
+        # Convert ORM → TaskData dict using _to_dict
+        return self._to_dict(task)
 
     async def list(
         self,
-        org_id: str,
+        org_id: UUID | str,
         filters: dict,
         limit: int,
         offset: int
@@ -150,7 +146,7 @@ class TaskRepository(BaseRepository[Task]):
     async def update(
         self,
         task_id: str,
-        org_id: str,
+        org_id: UUID | str,
         data: dict
     ) -> Optional[TaskData]:
         """
@@ -187,16 +183,8 @@ class TaskRepository(BaseRepository[Task]):
             project__organization_id=org_id
         ).prefetch_related('project').first()
 
-        # Convert ORM → TaskData dict
-        return {
-            "id": task.id,
-            "name": task.name,
-            "description": task.description,
-            "project_id": task.project_id,
-            "project_name": task.project.name,
-            "is_active": task.is_active,
-            "created_at": task.created_at,
-        }
+        # Convert ORM → TaskData dict using _to_dict
+        return self._to_dict(task)
 
     async def soft_delete(
         self,

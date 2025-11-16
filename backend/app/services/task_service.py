@@ -36,7 +36,7 @@ class TaskService:
         Raises:
             HTTPException(404): Project not found
         """
-        org_id = str(user.organization_id)
+        org_id = user["organization_id"]
 
         # Validate project exists and belongs to org (ORM-free validation)
         project_data = await project_repo.get_by_id(str(data.project_id), org_id)
@@ -79,7 +79,7 @@ class TaskService:
         Raises:
             HTTPException(404): Project filter specified but project not found
         """
-        org_id = str(user.organization_id)
+        org_id = user["organization_id"]
 
         # If filtering by project, validate it belongs to org
         if project_id:
@@ -124,7 +124,7 @@ class TaskService:
         Raises:
             HTTPException(404): Task not found
         """
-        org_id = str(user.organization_id)
+        org_id = user["organization_id"]
         task_data = await task_repo.get_by_id(task_id, org_id)
 
         if not task_data:
@@ -157,7 +157,7 @@ class TaskService:
         Raises:
             HTTPException(404): Task not found
         """
-        org_id = str(user.organization_id)
+        org_id = user["organization_id"]
 
         update_data = data.model_dump(exclude_unset=True)
 
@@ -189,7 +189,7 @@ class TaskService:
         Raises:
             HTTPException(404): Task not found
         """
-        org_id = str(user.organization_id)
+        org_id = user["organization_id"]
         deleted = await task_repo.soft_delete(task_id, org_id)
 
         if not deleted:

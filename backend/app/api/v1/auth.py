@@ -22,7 +22,7 @@ from app.schemas.auth import (
 from app.schemas.user import UserResponse
 from app.services.auth_service import auth_service
 from app.api.deps import get_current_active_user
-from app.models.user import User
+from app.domain.entities import UserData
 from app.core.config import settings
 
 
@@ -50,14 +50,14 @@ async def register(request: RegisterRequest) -> UserResponse:
     - Password must meet security requirements (8+ chars, mixed case, digit, special char)
     - Returns created user details (without password)
     """
-    user = await auth_service.register(
+    user_dict = await auth_service.register(
         email=request.email,
         password=request.password,
         role=request.role,
         organization_name=request.organization_name
     )
 
-    return UserResponse.model_validate(user)
+    return UserResponse(**user_dict)
 
 
 @router.post(
@@ -156,7 +156,7 @@ async def logout(request: RefreshRequest):
     }
 )
 async def get_me(
-    current_user: Annotated[User, Depends(get_current_active_user)]
+    current_user: Annotated[UserData, Depends(get_current_active_user)]
 ) -> UserResponse:
     """
     Get current authenticated user info.
@@ -165,4 +165,4 @@ async def get_me(
     - Returns user details (email, role, organization, etc.)
     - Useful for frontend to verify token and display user info
     """
-    return UserResponse.model_validate(current_user)
+    return UserResponse(**current_user)
