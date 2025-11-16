@@ -372,3 +372,254 @@ class TestDeleteTimeEntry:
         # Verify it's gone
         retrieved = await time_entry_repo.get_by_id(str(entry["id"]), test_org["id"])
         assert retrieved is None
+
+
+class TestTimeEntryTagOperations:
+    """Test time entry tag operations."""
+
+    async def test_create_entry_with_tags(self, test_org, test_slave, test_project):
+        """Test creating time entry with tags."""
+        from app.repositories.tag_repo import tag_repo
+
+        # Create tags
+        tag1 = await tag_repo.create(name="Development", org_id=str(test_org["id"]))
+        tag2 = await tag_repo.create(name="Bug Fix", org_id=str(test_org["id"]))
+
+        # Create entry with tags
+        entry = await time_entry_repo.create(
+            user_id=str(test_slave["id"]),
+            project_id=str(test_project["id"]),
+            task_id=None,
+            organization_id=str(test_org["id"]),
+            start_time=datetime.now(timezone.utc),
+            end_time=None,
+            is_running=True,
+            is_billable=True,
+            description=None,
+            tag_ids=[str(tag1["id"]), str(tag2["id"])]
+        )
+
+        assert len(entry["tags"]) == 2
+        tag_names = {t["name"] for t in entry["tags"]}
+        assert "Development" in tag_names
+        assert "Bug Fix" in tag_names
+
+        await time_entry_repo.delete(str(entry["id"]), test_org["id"])
+        await tag_repo.delete(str(tag1["id"]), str(test_org["id"]))
+        await tag_repo.delete(str(tag2["id"]), str(test_org["id"]))
+
+    async def test_create_entry_without_tags(self, test_org, test_slave, test_project):
+        """Test creating time entry without tags."""
+        entry = await time_entry_repo.create(
+            user_id=str(test_slave["id"]),
+            project_id=str(test_project["id"]),
+            task_id=None,
+            organization_id=str(test_org["id"]),
+            start_time=datetime.now(timezone.utc),
+            end_time=None,
+            is_running=True,
+            is_billable=True,
+            description=None,
+            tag_ids=None
+        )
+
+        assert entry["tags"] == []
+
+        await time_entry_repo.delete(str(entry["id"]), test_org["id"])
+
+    async def test_validate_tags_raises_on_invalid_tag(self, test_org, test_slave, test_project):
+        """Test that creating entry with invalid tag raises ValueError."""
+        with pytest.raises(ValueError, match="Tags not found"):
+            await time_entry_repo.create(
+                user_id=str(test_slave["id"]),
+                project_id=str(test_project["id"]),
+                task_id=None,
+                organization_id=str(test_org["id"]),
+                start_time=datetime.now(timezone.utc),
+                end_time=None,
+                is_running=True,
+                is_billable=True,
+                description=None,
+                tag_ids=["00000000-0000-0000-0000-000000000000"]
+            )
+
+    async def test_update_entry_tags(self, test_org, test_slave, test_project):
+        """Test updating time entry tags (replace all)."""
+        from app.repositories.tag_repo import tag_repo
+
+        # Create tags
+        tag1 = await tag_repo.create(name="Tag1", org_id=str(test_org["id"]))
+        tag2 = await tag_repo.create(name="Tag2", org_id=str(test_org["id"]))
+        tag3 = await tag_repo.create(name="Tag3", org_id=str(test_org["id"]))
+
+        # Create entry with tag1 and tag2
+        entry = await time_entry_repo.create(
+            user_id=str(test_slave["id"]),
+            project_id=str(test_project["id"]),
+            task_id=None,
+            organization_id=str(test_org["id"]),
+            start_time=datetime.now(timezone.utc),
+            end_time=None,
+            is_running=True,
+            is_billable=True,
+            description=None,
+            tag_ids=[str(tag1["id"]), str(tag2["id"])]
+        )
+
+        # Update to tag3 only (replaces all)
+        updated = await time_entry_repo.update(
+            str(entry["id"]),
+            test_org["id"],
+            {"tag_ids": [str(tag3["id"])]}
+        )
+
+        assert len(updated["tags"]) == 1
+        assert updated["tags"][0]["name"] == "Tag3"
+
+        await time_entry_repo.delete(str(entry["id"]), test_org["id"])
+        await tag_repo.delete(str(tag1["id"]), str(test_org["id"]))
+        await tag_repo.delete(str(tag2["id"]), str(test_org["id"]))
+        await tag_repo.delete(str(tag3["id"]), str(test_org["id"]))
+
+    async def test_update_entry_remove_all_tags(self, test_org, test_slave, test_project):
+        """Test removing all tags from entry (empty list)."""
+        from app.repositories.tag_repo import tag_repo
+
+        tag = await tag_repo.create(name="TagToRemove", org_id=str(test_org["id"]))
+
+        # Create entry with tag
+        entry = await time_entry_repo.create(
+            user_id=str(test_slave["id"]),
+            project_id=str(test_project["id"]),
+            task_id=None,
+            organization_id=str(test_org["id"]),
+            start_time=datetime.now(timezone.utc),
+            end_time=None,
+            is_running=True,
+            is_billable=True,
+            description=None,
+            tag_ids=[str(tag["id"])]
+        )
+
+        # Remove all tags
+        updated = await time_entry_repo.update(
+            str(entry["id"]),
+            test_org["id"],
+            {"tag_ids": []}
+        )
+
+        assert updated["tags"] == []
+
+        await time_entry_repo.delete(str(entry["id"]), test_org["id"])
+        await tag_repo.delete(str(tag["id"]), str(test_org["id"]))
+
+    async def test_update_entry_tags_none_leaves_unchanged(self, test_org, test_slave, test_project):
+        """Test that tag_ids=None (not provided) leaves tags unchanged."""
+        from app.repositories.tag_repo import tag_repo
+
+        tag = await tag_repo.create(name="OriginalTag", org_id=str(test_org["id"]))
+
+        # Create entry with tag
+        entry = await time_entry_repo.create(
+            user_id=str(test_slave["id"]),
+            project_id=str(test_project["id"]),
+            task_id=None,
+            organization_id=str(test_org["id"]),
+            start_time=datetime.now(timezone.utc),
+            end_time=None,
+            is_running=True,
+            is_billable=True,
+            description=None,
+            tag_ids=[str(tag["id"])]
+        )
+
+        # Update description only (tags not in dict)
+        updated = await time_entry_repo.update(
+            str(entry["id"]),
+            test_org["id"],
+            {"description": "Updated description"}
+        )
+
+        # Tags should remain
+        assert len(updated["tags"]) == 1
+        assert updated["tags"][0]["name"] == "OriginalTag"
+
+        await time_entry_repo.delete(str(entry["id"]), test_org["id"])
+        await tag_repo.delete(str(tag["id"]), str(test_org["id"]))
+
+    async def test_list_entries_filter_by_tags(self, test_org, test_slave, test_project):
+        """Test filtering time entries by tag IDs (OR logic)."""
+        from app.repositories.tag_repo import tag_repo
+
+        # Create tags
+        tag1 = await tag_repo.create(name="Client-A", org_id=str(test_org["id"]))
+        tag2 = await tag_repo.create(name="Client-B", org_id=str(test_org["id"]))
+
+        # Create entries
+        entry1 = await time_entry_repo.create(
+            user_id=str(test_slave["id"]),
+            project_id=str(test_project["id"]),
+            task_id=None,
+            organization_id=str(test_org["id"]),
+            start_time=datetime.now(timezone.utc),
+            end_time=None,
+            is_running=True,
+            is_billable=True,
+            description="Entry with tag1",
+            tag_ids=[str(tag1["id"])]
+        )
+
+        entry2 = await time_entry_repo.create(
+            user_id=str(test_slave["id"]),
+            project_id=str(test_project["id"]),
+            task_id=None,
+            organization_id=str(test_org["id"]),
+            start_time=datetime.now(timezone.utc) - timedelta(hours=1),
+            end_time=None,
+            is_running=False,
+            is_billable=True,
+            description="Entry with tag2",
+            tag_ids=[str(tag2["id"])]
+        )
+
+        entry3 = await time_entry_repo.create(
+            user_id=str(test_slave["id"]),
+            project_id=str(test_project["id"]),
+            task_id=None,
+            organization_id=str(test_org["id"]),
+            start_time=datetime.now(timezone.utc) - timedelta(hours=2),
+            end_time=None,
+            is_running=False,
+            is_billable=True,
+            description="Entry without tags",
+            tag_ids=None
+        )
+
+        # Filter by tag1 only
+        result1 = await time_entry_repo.list(
+            test_org["id"],
+            {"tag_ids": [str(tag1["id"])]},
+            limit=50,
+            offset=0
+        )
+        entry_ids1 = {str(e["id"]) for e in result1["items"]}
+        assert str(entry1["id"]) in entry_ids1
+        assert str(entry2["id"]) not in entry_ids1
+
+        # Filter by tag1 OR tag2 (OR logic)
+        result2 = await time_entry_repo.list(
+            test_org["id"],
+            {"tag_ids": [str(tag1["id"]), str(tag2["id"])]},
+            limit=50,
+            offset=0
+        )
+        entry_ids2 = {str(e["id"]) for e in result2["items"]}
+        assert str(entry1["id"]) in entry_ids2
+        assert str(entry2["id"]) in entry_ids2
+        assert str(entry3["id"]) not in entry_ids2
+
+        await time_entry_repo.delete(str(entry1["id"]), test_org["id"])
+        await time_entry_repo.delete(str(entry2["id"]), test_org["id"])
+        await time_entry_repo.delete(str(entry3["id"]), test_org["id"])
+        await tag_repo.delete(str(tag1["id"]), str(test_org["id"]))
+        await tag_repo.delete(str(tag2["id"]), str(test_org["id"]))
