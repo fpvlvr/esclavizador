@@ -28,6 +28,30 @@ from app.repositories.task_repo import task_repo
 
 
 @pytest.fixture(scope="session")
+def test_user_email():
+    """Email for test_user fixture."""
+    return "test@example.com"
+
+
+@pytest.fixture(scope="session")
+def test_user_password():
+    """Password for test_user fixture."""
+    return "TestPass123!"
+
+
+@pytest.fixture(scope="session")
+def test_master_email():
+    """Email for test_master fixture."""
+    return "master@example.com"
+
+
+@pytest.fixture(scope="session")
+def test_master_password():
+    """Password for test_master fixture."""
+    return "MasterPass123!"
+
+
+@pytest.fixture(scope="session")
 def event_loop():
     """
     Create event loop for session-scoped async fixtures.
@@ -107,52 +131,56 @@ async def test_org():
 
 
 @pytest_asyncio.fixture
-async def test_user(test_org):
+async def test_user(test_org, test_user_email, test_user_password):
     """
     Create test user with SLAVE role.
 
     Credentials:
-        email: test@example.com
-        password: TestPass123!
+        email: test@example.com (from test_user_email fixture)
+        password: TestPass123! (from test_user_password fixture)
         role: SLAVE
 
     Args:
         test_org: Organization fixture (OrganizationData dict)
+        test_user_email: Email fixture
+        test_user_password: Password fixture
 
     Returns:
         UserData dict
     """
     user = await user_repo.create_user(
-        email="test@example.com",
-        password_hash=hash_password("TestPass123!"),
+        email=test_user_email,
+        password_hash=hash_password(test_user_password),
         role=UserRole.SLAVE,
-        organization_id=str(test_org["id"])
+        organization_id=test_org["id"]
     )
     yield user
     await user_repo.delete(user["id"])
 
 
 @pytest_asyncio.fixture
-async def test_master(test_org):
+async def test_master(test_org, test_master_email, test_master_password):
     """
     Create test user with MASTER role.
 
     Credentials:
-        email: master@example.com
-        password: MasterPass123!
+        email: master@example.com (from test_master_email fixture)
+        password: MasterPass123! (from test_master_password fixture)
         role: MASTER
 
     Args:
         test_org: Organization fixture (OrganizationData dict)
+        test_master_email: Email fixture
+        test_master_password: Password fixture
 
     Returns:
         UserData dict
     """
     user = await user_repo.create_user(
-        email="master@example.com",
-        password_hash=hash_password("MasterPass123!"),
+        email=test_master_email,
+        password_hash=hash_password(test_master_password),
         role=UserRole.MASTER,
-        organization_id=str(test_org["id"])
+        organization_id=test_org["id"]
     )
     yield user
     await user_repo.delete(user["id"])

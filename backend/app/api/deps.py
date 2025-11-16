@@ -122,7 +122,7 @@ async def require_master_role(
     Raises:
         HTTPException(403): User is not a master
     """
-    if current_user["role"] != "MASTER":
+    if current_user["role"] != "master":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Master role required"

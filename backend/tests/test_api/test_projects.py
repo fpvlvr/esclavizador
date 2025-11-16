@@ -11,16 +11,18 @@ Tests full HTTP request/response cycle including:
 
 import pytest
 
+from app.repositories.project_repo import project_repo
+
 
 class TestCreateProject:
     """Test POST /api/v1/projects endpoint."""
 
-    async def test_create_project_as_master(self, client, test_master):
+    async def test_create_project_as_master(self, client, test_master, test_master_email, test_master_password):
         """Test master can create project."""
         # Login to get token
         login_response = await client.post("/api/v1/auth/login", json={
-            "email": "master@example.com",
-            "password": "MasterPass123!"
+            "email": test_master_email,
+            "password": test_master_password
         })
         assert login_response.status_code == 200
         token = login_response.json()["access_token"]
@@ -128,10 +130,19 @@ class TestListProjects:
         })
         token = login_response.json()["access_token"]
 
-        # Create active and inactive projects
-        from app.models.project import Project
-        active = await Project.create(name="Active", organization=test_org, is_active=True)
-        inactive = await Project.create(name="Inactive", organization=test_org, is_active=False)
+        # Create active and inactive projects via repository
+        active = await project_repo.create(
+            name="Active",
+            description=None,
+            org_id=test_org["id"]
+        )
+        inactive = await project_repo.create(
+            name="Inactive",
+            description=None,
+            org_id=test_org["id"]
+        )
+        # Soft delete to make inactive
+        await project_repo.soft_delete(inactive["id"], test_org["id"])
 
         # Filter active only
         response = await client.get(
@@ -144,8 +155,8 @@ class TestListProjects:
         assert all(p["is_active"] is True for p in data["items"])
 
         # Cleanup
-        await active.delete()
-        await inactive.delete()
+        await project_repo.delete(active["id"])
+        await project_repo.delete(inactive["id"])
 
     async def test_list_projects_pagination(self, client, test_user, test_org):
         """Test pagination with limit/offset."""
@@ -156,11 +167,14 @@ class TestListProjects:
         })
         token = login_response.json()["access_token"]
 
-        # Create multiple projects
-        from app.models.project import Project
+        # Create multiple projects via repository
         projects = []
         for i in range(5):
-            p = await Project.create(name=f"Project {i}", organization=test_org)
+            p = await project_repo.create(
+                name=f"Project {i}",
+                description=None,
+                org_id=test_org["id"]
+            )
             projects.append(p)
 
         # Get first 2
@@ -178,15 +192,15 @@ class TestListProjects:
 
         # Cleanup
         for p in projects:
-            await p.delete()
+            await project_repo.delete(p["id"])
 
     async def test_list_projects_multi_tenant_isolation(self, client, test_user, second_org):
         """Test users only see their org's projects."""
-        # Create project in second org
-        from app.models.project import Project
-        other_project = await Project.create(
+        # Create project in second org via repository
+        other_project = await project_repo.create(
             name="Other Org Project",
-            organization=second_org
+            description=None,
+            org_id=second_org["id"]
         )
 
         # Login as test_user
@@ -209,7 +223,7 @@ class TestListProjects:
         assert "Other Org Project" not in project_names
 
         # Cleanup
-        await other_project.delete()
+        await project_repo.delete(other_project["id"])
 
 
 class TestGetProject:
@@ -226,13 +240,13 @@ class TestGetProject:
 
         # Get project
         response = await client.get(
-            f"/api/v1/projects/{test_project.id}",
+            f"/api/v1/projects/{test_project['id']}",
             headers={"Authorization": f"Bearer {token}"}
         )
 
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == str(test_project.id)
+        assert data["id"] == str(test_project["id"])
         assert data["name"] == "Test Project"
         assert "task_count" in data
 
@@ -265,7 +279,7 @@ class TestGetProject:
 
         # Try to get other org's project
         response = await client.get(
-            f"/api/v1/projects/{second_org_project.id}",
+            f"/api/v1/projects/{second_org_project['id']}",
             headers={"Authorization": f"Bearer {token}"}
         )
 
@@ -286,7 +300,7 @@ class TestUpdateProject:
 
         # Update project
         response = await client.put(
-            f"/api/v1/projects/{test_project.id}",
+            f"/api/v1/projects/{test_project['id']}",
             json={
                 "name": "Updated Name",
                 "description": "Updated description"
@@ -310,7 +324,7 @@ class TestUpdateProject:
 
         # Try to update
         response = await client.put(
-            f"/api/v1/projects/{test_project.id}",
+            f"/api/v1/projects/{test_project['id']}",
             json={"name": "Updated"},
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -328,7 +342,7 @@ class TestUpdateProject:
 
         # Update only name
         response = await client.put(
-            f"/api/v1/projects/{test_project.id}",
+            f"/api/v1/projects/{test_project['id']}",
             json={"name": "Updated Name Only"},
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -362,9 +376,12 @@ class TestDeleteProject:
 
     async def test_delete_project_as_master(self, client, test_master, test_org):
         """Test master can delete project."""
-        # Create project
-        from app.models.project import Project
-        project = await Project.create(name="To Delete", organization=test_org)
+        # Create project via repository
+        project = await project_repo.create(
+            name="To Delete",
+            description=None,
+            org_id=test_org["id"]
+        )
 
         # Login
         login_response = await client.post("/api/v1/auth/login", json={
@@ -375,18 +392,19 @@ class TestDeleteProject:
 
         # Delete
         response = await client.delete(
-            f"/api/v1/projects/{project.id}",
+            f"/api/v1/projects/{project['id']}",
             headers={"Authorization": f"Bearer {token}"}
         )
 
         assert response.status_code == 204
 
-        # Verify soft deleted
-        project = await Project.get(id=project.id)
-        assert project.is_active is False
+        # Verify soft deleted via repository
+        fetched = await project_repo.get_by_id(project["id"], test_org["id"])
+        assert fetched is not None
+        assert fetched["is_active"] is False
 
         # Cleanup
-        await project.delete()
+        await project_repo.delete(project["id"])
 
     async def test_delete_project_as_slave_forbidden(self, client, test_user, test_project):
         """Test slave cannot delete project (403)."""
@@ -399,7 +417,7 @@ class TestDeleteProject:
 
         # Try to delete
         response = await client.delete(
-            f"/api/v1/projects/{test_project.id}",
+            f"/api/v1/projects/{test_project['id']}",
             headers={"Authorization": f"Bearer {token}"}
         )
 
