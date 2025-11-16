@@ -11,8 +11,9 @@ from datetime import datetime
 from tortoise.queryset import Q
 
 from app.models.time_entry import TimeEntry
+from app.models.tag import Tag
 from app.repositories.base import BaseRepository
-from app.domain.entities import TimeEntryData
+from app.domain.entities import TimeEntryData, TagData
 
 
 class TimeEntryRepository(BaseRepository[TimeEntry, TimeEntryData]):
@@ -20,19 +21,56 @@ class TimeEntryRepository(BaseRepository[TimeEntry, TimeEntryData]):
 
     model = TimeEntry
 
+    async def _validate_tags(self, tag_ids: list[str], org_id: str) -> list[Tag]:
+        """Raises ValueError if any tag doesn't exist in organization."""
+        if not tag_ids:
+            return []
+
+        tags = await Tag.filter(
+            id__in=tag_ids,
+            organization_id=org_id
+        ).all()
+
+        if len(tags) != len(tag_ids):
+            found_ids = {str(tag.id) for tag in tags}
+            missing_ids = [tid for tid in tag_ids if tid not in found_ids]
+            raise ValueError(f"Tags not found in organization: {missing_ids}")
+
+        return tags
+
     async def _to_dict(self, entry: TimeEntry) -> TimeEntryData:
         """
         Convert TimeEntry ORM instance to TimeEntryData dict.
 
-        Requires prefetched relations: user, project, task (optional).
+        Requires prefetched relations: user, project, task (optional), tags.
         """
         # Ensure relations are loaded
-        await entry.fetch_related('user', 'project', 'task')
+        await entry.fetch_related('user', 'project', 'task', 'tags')
 
         # Compute duration if entry is stopped
         duration_seconds = None
         if entry.end_time:
-            duration_seconds = int((entry.end_time - entry.start_time).total_seconds())
+            # Ensure both datetimes are timezone-aware for subtraction
+            end_time = entry.end_time
+            start_time = entry.start_time
+            if end_time.tzinfo is None:
+                from datetime import timezone
+                end_time = end_time.replace(tzinfo=timezone.utc)
+            if start_time.tzinfo is None:
+                from datetime import timezone
+                start_time = start_time.replace(tzinfo=timezone.utc)
+            duration_seconds = int((end_time - start_time).total_seconds())
+
+        # Convert tags to TagData dicts
+        tags: list[TagData] = [
+            {
+                "id": tag.id,
+                "name": tag.name,
+                "organization_id": tag.organization_id,
+                "created_at": tag.created_at,
+            }
+            for tag in entry.tags
+        ]
 
         return {
             "id": entry.id,
@@ -51,6 +89,7 @@ class TimeEntryRepository(BaseRepository[TimeEntry, TimeEntryData]):
             "project_name": entry.project.name,
             "task_name": entry.task.name if entry.task else None,
             "duration_seconds": duration_seconds,
+            "tags": tags,
         }
 
     async def create(
@@ -63,25 +102,9 @@ class TimeEntryRepository(BaseRepository[TimeEntry, TimeEntryData]):
         end_time: Optional[datetime],
         is_running: bool,
         is_billable: bool,
-        description: Optional[str]
+        description: Optional[str],
+        tag_ids: Optional[list[str]] = None
     ) -> TimeEntryData:
-        """
-        Create new time entry.
-
-        Args:
-            user_id: User UUID
-            project_id: Project UUID
-            task_id: Task UUID (optional)
-            organization_id: Organization UUID
-            start_time: Entry start time
-            end_time: Entry end time (None for running timers)
-            is_running: Whether timer is currently running
-            is_billable: Whether time is billable
-            description: Entry description (optional)
-
-        Returns:
-            TimeEntryData dict with prefetched relations
-        """
         entry = await self.model.create(
             user_id=user_id,
             project_id=project_id,
@@ -94,9 +117,12 @@ class TimeEntryRepository(BaseRepository[TimeEntry, TimeEntryData]):
             description=description
         )
 
-        # Prefetch relations for conversion
-        await entry.fetch_related('user', 'project', 'task')
+        # Add tags if provided
+        if tag_ids:
+            tag_objects = await self._validate_tags(tag_ids, organization_id)
+            await entry.tags.add(*tag_objects)
 
+        await entry.fetch_related('user', 'project', 'task', 'tags')
         return await self._to_dict(entry)
 
     async def get_by_id(
@@ -104,20 +130,10 @@ class TimeEntryRepository(BaseRepository[TimeEntry, TimeEntryData]):
         entry_id: str,
         org_id: str
     ) -> Optional[TimeEntryData]:
-        """
-        Get time entry by ID with multi-tenant filtering.
-
-        Args:
-            entry_id: TimeEntry UUID
-            org_id: Organization UUID
-
-        Returns:
-            TimeEntryData dict with prefetched relations, or None if not found
-        """
         entry = await self.model.filter(
             id=entry_id,
             organization_id=org_id
-        ).prefetch_related('user', 'project', 'task').first()
+        ).prefetch_related('user', 'project', 'task', 'tags').first()
 
         if not entry:
             return None
@@ -129,21 +145,11 @@ class TimeEntryRepository(BaseRepository[TimeEntry, TimeEntryData]):
         user_id: UUID | str,
         org_id: UUID | str
     ) -> Optional[TimeEntryData]:
-        """
-        Get currently running time entry for user.
-
-        Args:
-            user_id: User UUID
-            org_id: Organization UUID
-
-        Returns:
-            TimeEntryData dict if running entry exists, else None
-        """
         entry = await self.model.filter(
             user_id=user_id,
             organization_id=org_id,
             is_running=True
-        ).prefetch_related('user', 'project', 'task').first()
+        ).prefetch_related('user', 'project', 'task', 'tags').first()
 
         if not entry:
             return None
@@ -155,24 +161,13 @@ class TimeEntryRepository(BaseRepository[TimeEntry, TimeEntryData]):
         entry_id: str,
         end_time: datetime
     ) -> TimeEntryData:
-        """
-        Stop a running timer.
-
-        Args:
-            entry_id: TimeEntry UUID
-            end_time: Time when timer stopped
-
-        Returns:
-            Updated TimeEntryData dict
-
-        Note: Caller should verify entry exists and is running
-        """
+        """Caller should verify entry exists and is running."""
         entry = await self.model.get(id=entry_id)
         entry.end_time = end_time
         entry.is_running = False
         await entry.save()
 
-        await entry.fetch_related('user', 'project', 'task')
+        await entry.fetch_related('user', 'project', 'task', 'tags')
         return await self._to_dict(entry)
 
     async def check_overlap(
@@ -187,8 +182,8 @@ class TimeEntryRepository(BaseRepository[TimeEntry, TimeEntryData]):
 
         Args:
             user_id: User UUID
-            start_time: Start of time range
-            end_time: End of time range
+            start_time: Start of time range (timezone-aware UTC)
+            end_time: End of time range (timezone-aware UTC)
             exclude_entry_id: Entry ID to exclude from check (for updates)
 
         Returns:
@@ -219,29 +214,11 @@ class TimeEntryRepository(BaseRepository[TimeEntry, TimeEntryData]):
         offset: int
     ) -> dict:
         """
-        List time entries with filtering and pagination.
-
-        Args:
-            org_id: Organization UUID
-            filters: Dict with optional keys:
-                - user_id (str): Filter by user
-                - project_id (str): Filter by project
-                - task_id (str): Filter by task
-                - is_billable (bool): Filter by billable status
-                - is_running (bool): Filter by running status
-                - start_date (date): Entries started on/after this date
-                - end_date (date): Entries started on/before this date
-
-            limit: Maximum items to return
-            offset: Number of items to skip
-
-        Returns:
-            Dict with keys: items (list of TimeEntryData dicts), total (int)
+        Filters: user_id, project_id, task_id, is_billable, is_running,
+        start_date, end_date, tag_ids (list[str], OR logic).
         """
-        # Base query with org filter
         query = self.model.filter(organization_id=org_id)
 
-        # Apply optional filters
         if 'user_id' in filters and filters['user_id']:
             query = query.filter(user_id=filters['user_id'])
 
@@ -257,26 +234,24 @@ class TimeEntryRepository(BaseRepository[TimeEntry, TimeEntryData]):
         if 'is_running' in filters and filters['is_running'] is not None:
             query = query.filter(is_running=filters['is_running'])
 
-        # Date range filtering on start_time
         if 'start_date' in filters and filters['start_date']:
-            # Convert date to datetime (start of day)
             start_dt = datetime.combine(filters['start_date'], datetime.min.time())
             query = query.filter(start_time__gte=start_dt)
 
         if 'end_date' in filters and filters['end_date']:
-            # Convert date to datetime (end of day)
             end_dt = datetime.combine(filters['end_date'], datetime.max.time())
             query = query.filter(start_time__lte=end_dt)
 
-        # Get total count
+        # Tag filtering (OR logic - show entries with ANY of the specified tags)
+        if 'tag_ids' in filters and filters['tag_ids']:
+            query = query.filter(tags__id__in=filters['tag_ids'])
+
         total = await query.count()
 
-        # Get paginated results with prefetched relations
         entries = await query.prefetch_related(
-            'user', 'project', 'task'
+            'user', 'project', 'task', 'tags'
         ).offset(offset).limit(limit).order_by('-start_time').all()
 
-        # Convert to TimeEntryData dicts
         items = [await self._to_dict(entry) for entry in entries]
 
         return {
@@ -290,18 +265,7 @@ class TimeEntryRepository(BaseRepository[TimeEntry, TimeEntryData]):
         org_id: UUID | str,
         data: dict
     ) -> Optional[TimeEntryData]:
-        """
-        Update time entry with multi-tenant filtering.
-
-        Args:
-            entry_id: TimeEntry UUID
-            org_id: Organization UUID
-            data: Dict of fields to update
-
-        Returns:
-            Updated TimeEntryData dict, or None if not found
-        """
-        # Get entry (verifies org ownership)
+        """If 'tag_ids' in data, replaces all tags. If not provided, leaves tags unchanged."""
         entry = await self.model.filter(
             id=entry_id,
             organization_id=org_id
@@ -310,14 +274,24 @@ class TimeEntryRepository(BaseRepository[TimeEntry, TimeEntryData]):
         if not entry:
             return None
 
-        # Update fields
+        # Handle tag updates separately
+        tag_ids = data.pop('tag_ids', None)
+
+        # Update other fields
         for key, value in data.items():
             setattr(entry, key, value)
 
         await entry.save()
 
-        # Fetch with relations for conversion
-        await entry.fetch_related('user', 'project', 'task')
+        # Update tags if provided (replaces all existing tags)
+        if tag_ids is not None:
+            await entry.fetch_related('tags')
+            await entry.tags.clear()
+            if tag_ids:  # Only add if list is not empty
+                tag_objects = await self._validate_tags(tag_ids, str(org_id))
+                await entry.tags.add(*tag_objects)
+
+        await entry.fetch_related('user', 'project', 'task', 'tags')
         return await self._to_dict(entry)
 
     async def delete(

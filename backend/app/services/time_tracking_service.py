@@ -7,7 +7,7 @@ Returns domain entity dicts (TimeEntryData) from repository layer.
 
 from typing import Optional
 from uuid import UUID
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from fastapi import HTTPException, status
 
 from app.domain.entities import UserData, TimeEntryData
@@ -16,6 +16,7 @@ from app.repositories.time_entry_repo import time_entry_repo
 from app.repositories.project_repo import project_repo
 from app.repositories.task_repo import task_repo
 from app.repositories.user_repo import user_repo
+from app.repositories.tag_repo import tag_repo
 
 
 class TimeTrackingService:
@@ -67,17 +68,30 @@ class TimeTrackingService:
                     detail="Task not found or doesn't belong to project"
                 )
 
-        # 4. Create timer entry
+        # 4. Validate tags if provided
+        tag_ids = None
+        if data.tag_ids:
+            tag_ids = [str(tid) for tid in data.tag_ids]
+            for tid in tag_ids:
+                tag = await tag_repo.get_by_id(tid, str(org_id))
+                if not tag:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Tag not found: {tid}"
+                    )
+
+        # 5. Create timer entry
         return await time_entry_repo.create(
             user_id=str(user["id"]),
             project_id=str(data.project_id),
             task_id=str(data.task_id) if data.task_id else None,
             organization_id=str(org_id),
-            start_time=datetime.utcnow(),
+            start_time=datetime.now(timezone.utc),
             end_time=None,
             is_running=True,
             is_billable=data.is_billable,
-            description=data.description
+            description=data.description,
+            tag_ids=tag_ids
         )
 
     async def stop_timer(
@@ -125,7 +139,7 @@ class TimeTrackingService:
             )
 
         # 4. Stop it
-        return await time_entry_repo.stop_timer(entry_id, datetime.utcnow())
+        return await time_entry_repo.stop_timer(entry_id, datetime.now(timezone.utc))
 
     async def get_running_timer(
         self,
@@ -170,7 +184,7 @@ class TimeTrackingService:
                 detail="end_time must be after start_time"
             )
 
-        if data.start_time > datetime.utcnow() or data.end_time > datetime.utcnow():
+        if data.start_time > datetime.now(timezone.utc) or data.end_time > datetime.now(timezone.utc):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Times cannot be in the future"
@@ -205,7 +219,19 @@ class TimeTrackingService:
                     detail="Task not found or doesn't belong to project"
                 )
 
-        # 5. Create entry (not running, has end_time)
+        # 5. Validate tags if provided
+        tag_ids = None
+        if data.tag_ids:
+            tag_ids = [str(tid) for tid in data.tag_ids]
+            for tid in tag_ids:
+                tag = await tag_repo.get_by_id(tid, str(org_id))
+                if not tag:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Tag not found: {tid}"
+                    )
+
+        # 6. Create entry (not running, has end_time)
         return await time_entry_repo.create(
             user_id=str(user["id"]),
             project_id=str(data.project_id),
@@ -215,7 +241,8 @@ class TimeTrackingService:
             end_time=data.end_time,
             is_running=False,
             is_billable=data.is_billable,
-            description=data.description
+            description=data.description,
+            tag_ids=tag_ids
         )
 
     async def list_entries(
@@ -228,6 +255,7 @@ class TimeTrackingService:
         start_date: Optional[date],
         end_date: Optional[date],
         is_running: Optional[bool],
+        tag_ids: Optional[list[str]],
         limit: int,
         offset: int
     ) -> dict:
@@ -269,9 +297,14 @@ class TimeTrackingService:
         else:
             # Masters can filter by user_id
             if user_id:
-                # Validate user exists in org
-                filter_user = await user_repo.get_by_id(user_id, str(org_id))
+                # Validate user exists and belongs to same org
+                filter_user = await user_repo.get_by_id(user_id)
                 if not filter_user:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="User not found"
+                    )
+                if filter_user["organization_id"] != org_id:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
                         detail="User not found"
@@ -291,6 +324,8 @@ class TimeTrackingService:
             filters["start_date"] = start_date
         if end_date:
             filters["end_date"] = end_date
+        if tag_ids:
+            filters["tag_ids"] = tag_ids
 
         result = await time_entry_repo.list(str(org_id), filters, limit, offset)
 
@@ -431,7 +466,22 @@ class TimeTrackingService:
                     detail="Task not found or doesn't belong to project"
                 )
 
-        # 9. Update
+        # 9. Validate tags if being updated
+        if 'tag_ids' in update_dict:
+            tag_ids = update_dict['tag_ids']
+            if tag_ids:  # If not empty list
+                tag_ids_str = [str(tid) for tid in tag_ids]
+                for tid in tag_ids_str:
+                    tag = await tag_repo.get_by_id(tid, str(org_id))
+                    if not tag:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Tag not found: {tid}"
+                        )
+                update_dict['tag_ids'] = tag_ids_str
+            # else: empty list means remove all tags
+
+        # 10. Update
         updated = await time_entry_repo.update(entry_id, org_id, update_dict)
 
         if not updated:

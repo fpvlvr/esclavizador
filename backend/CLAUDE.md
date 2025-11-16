@@ -1,4 +1,10 @@
+# Code commenting
+IMPORTANT: Always use this rule when you create new or modify existing code
+- Code comments/docstrings should explain edge cases or non-obvious details
+- Do not create self-evident docstrings
+
 # Documentation Guidelines
+IMPORTANT: Always use this rule when asked to document the progress/implementation details/current featureNo state
 
 **Audience:** Claude (you) after context reset
 **Purpose:** Enable picking up work seamlessly
@@ -28,14 +34,13 @@ Test: "Does this help me continue work after context loss?"
 - History (what was "fixed", versions, dates, bug stories)
 - Metadata (test counts, status badges, timestamps)
 - Code implementations (reference paths instead)
-- Rationale (WHY/HOW explanations)
 - Speculation (future features, might-do-later)
 
 ---
 
 ## Format
 
-**Prefer:** Bullets, lists, dense → WHAT/WHERE not WHY/HOW
+**Prefer:** Bullets, lists, dense
 
 **Code:** Never copy project code → reference paths
 **Exception:** Minimal pattern examples OK (e.g., dict unpacking)

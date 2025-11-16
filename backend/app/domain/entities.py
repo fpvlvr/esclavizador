@@ -66,6 +66,14 @@ class RefreshTokenData(TypedDict):
     created_at: datetime
 
 
+class TagData(TypedDict):
+
+    id: UUID
+    name: str
+    organization_id: UUID
+    created_at: datetime
+
+
 class TimeEntryData(TypedDict):
 
     id: UUID
@@ -84,3 +92,4 @@ class TimeEntryData(TypedDict):
     project_name: str  # Extracted from project.name
     task_name: Optional[str]  # Extracted from task.name if task exists
     duration_seconds: Optional[int]  # Computed: (end_time - start_time).total_seconds()
+    tags: list["TagData"]  # Extracted from prefetched tags relation

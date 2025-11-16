@@ -105,6 +105,7 @@ async def list_time_entries(
     start_date: Optional[date] = Query(None, description="Filter by start date (entries >= this date)"),
     end_date: Optional[date] = Query(None, description="Filter by end date (entries <= this date)"),
     is_running: Optional[bool] = Query(None, description="Filter by running status"),
+    tag_ids: Optional[list[UUID]] = Query(None, description="Filter by tag IDs (OR logic)"),
     limit: int = Query(50, ge=1, le=100, description="Maximum items per page"),
     offset: int = Query(0, ge=0, description="Number of items to skip")
 ) -> TimeEntryList:
@@ -118,6 +119,7 @@ async def list_time_entries(
         start_date=start_date,
         end_date=end_date,
         is_running=is_running,
+        tag_ids=[str(tid) for tid in tag_ids] if tag_ids else None,
         limit=limit,
         offset=offset
     )
