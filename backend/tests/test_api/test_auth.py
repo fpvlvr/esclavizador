@@ -15,9 +15,8 @@ import pytest
 from datetime import datetime, timedelta, timezone
 import jwt
 
-from app.core.security import hash_password, create_access_token, create_refresh_token, hash_token
+from app.core.security import create_access_token, create_refresh_token, hash_token
 from app.core.config import settings
-from app.models.user import UserRole
 from app.repositories.organization_repo import organization_repo
 from app.repositories.user_repo import user_repo
 from app.repositories.refresh_token_repo import refresh_token_repo
@@ -47,41 +46,28 @@ class TestRegisterEndpoint:
 
         # Cleanup
         user = await user_repo.get_by_email("newuser@example.com")
-        org = await organization_repo.get_by_id(str(user.organization_id))
-        await user.delete()
-        await org.delete()
+        org = await organization_repo.get_by_id(user["organization_id"])
+        await user_repo.delete(user["id"])
+        await organization_repo.delete(org["id"])
 
-    async def test_register_org_already_exists(self, client):
+    async def test_register_org_already_exists(self, client, test_org):
         """Test registration with existing org name returns 409."""
-        # Create existing org
-        existing_org = await organization_repo.create_organization(name="Taken Org")
-
+        # test_org already exists with name "Test Org"
         response = await client.post("/api/v1/auth/register", json={
             "email": "user@example.com",
             "password": "SecurePass123!",
             "role": "slave",
-            "organization_name": "Taken Org"  # Already exists
+            "organization_name": "Test Org"  # Already exists
         })
 
         assert response.status_code == 409
         assert "Organization name already exists" in response.json()["detail"]
 
-        # Cleanup
-        await existing_org.delete()
-
-    async def test_register_duplicate_email(self, client):
+    async def test_register_duplicate_email(self, client, test_user):
         """Test registration with existing email returns 409."""
-        # Create existing user
-        org = await organization_repo.create_organization(name="Email Dup Org")
-        existing_user = await user_repo.create_user(
-            email="taken@example.com",
-            password_hash=hash_password("Password123!"),
-            role=UserRole.SLAVE,
-            organization=org
-        )
-
+        # test_user already exists with email "test@example.com"
         response = await client.post("/api/v1/auth/register", json={
-            "email": "taken@example.com",  # Already exists
+            "email": "test@example.com",  # Already exists
             "password": "SecurePass123!",
             "role": "master",
             "organization_name": "Another Org"
@@ -89,10 +75,6 @@ class TestRegisterEndpoint:
 
         assert response.status_code == 409
         assert "Email already registered" in response.json()["detail"]
-
-        # Cleanup
-        await existing_user.delete()
-        await org.delete()
 
     async def test_register_weak_password_short(self, client):
         """Test registration with short password returns 422."""
@@ -218,9 +200,8 @@ class TestLoginEndpoint:
 
     async def test_login_inactive_account(self, client, test_user):
         """Test login with inactive account returns 403."""
-        # Make user inactive
-        test_user.is_active = False
-        await test_user.save()
+        # Make user inactive via repository
+        await user_repo.update(test_user["id"], {"is_active": False})
 
         response = await client.post("/api/v1/auth/login", json={
             "email": "test@example.com",
@@ -231,8 +212,7 @@ class TestLoginEndpoint:
         assert "Inactive account" in response.json()["detail"]
 
         # Restore active status for cleanup
-        test_user.is_active = True
-        await test_user.save()
+        await user_repo.update(test_user["id"], {"is_active": True})
 
     async def test_login_invalid_email_format(self, client):
         """Test login with invalid email format returns 422."""
@@ -276,7 +256,7 @@ class TestRefreshEndpoint:
         expire = now - timedelta(days=1)  # Expired
 
         payload = {
-            "sub": str(test_user.id),
+            "sub": str(test_user["id"]),
             "type": "refresh",
             "exp": expire,
             "iat": now - timedelta(days=2),
@@ -410,10 +390,10 @@ class TestGetMeEndpoint:
         expire = now - timedelta(hours=1)  # Expired
 
         payload = {
-            "sub": str(test_user.id),
-            "email": test_user.email,
-            "role": test_user.role.value,
-            "org_id": str(test_user.organization_id),
+            "sub": str(test_user["id"]),
+            "email": test_user["email"],
+            "role": test_user["role"],
+            "org_id": str(test_user["organization_id"]),
             "exp": expire,
             "iat": now - timedelta(hours=2),
             "type": "access"
@@ -446,9 +426,8 @@ class TestGetMeEndpoint:
         })
         access_token = login_response.json()["access_token"]
 
-        # Make user inactive
-        test_user.is_active = False
-        await test_user.save()
+        # Make user inactive via repository
+        await user_repo.update(test_user["id"], {"is_active": False})
 
         # Try to access /me
         response = await client.get(
@@ -459,8 +438,7 @@ class TestGetMeEndpoint:
         assert response.status_code == 403
 
         # Restore active status for cleanup
-        test_user.is_active = True
-        await test_user.save()
+        await user_repo.update(test_user["id"], {"is_active": True})
 
 
 class TestRoleBasedAccess:
