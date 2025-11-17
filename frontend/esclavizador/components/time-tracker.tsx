@@ -1,11 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Play, Pause, Square } from 'lucide-react'
+import { Play, Pause, Square, AlertCircle } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useAuth } from "@/hooks/use-auth"
 
 const projects = [
   { id: "1", name: "Website Redesign", color: "bg-chart-1" },
@@ -31,11 +33,17 @@ const allTasks = [
 ]
 
 export function TimeTracker() {
+  const { user } = useAuth()
   const [isRunning, setIsRunning] = useState(false)
   const [time, setTime] = useState(0)
   const [description, setDescription] = useState("")
   const [selectedProject, setSelectedProject] = useState("")
   const [selectedTask, setSelectedTask] = useState("")
+
+  // TODO: Replace with real data from useProjects hook
+  const availableProjects = projects
+  const isBoss = user?.role === 'boss'
+  const hasNoProjects = availableProjects.length === 0
 
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined
@@ -82,50 +90,67 @@ export function TimeTracker() {
   return (
     <Card className="border-border">
       <CardContent className="p-6">
-        <div className="flex flex-col md:flex-row items-center gap-4">
-          <div className="text-4xl font-mono font-bold tabular-nums">{formatTime(time)}</div>
-          <Input
-            placeholder="What are you working on?"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="flex-1"
-          />
-          <Select value={selectedProject} onValueChange={setSelectedProject}>
-            <SelectTrigger className="w-full md:w-52">
-              <SelectValue placeholder="Select project" />
-            </SelectTrigger>
-            <SelectContent>
-              {projects.map((project) => (
-                <SelectItem key={project.id} value={project.id}>
-                  <div className="flex items-center gap-2">
-                    <div className={`h-3 w-3 rounded-full ${project.color}`} />
-                    {project.name}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="flex items-center gap-2">
-            <Button size="lg" onClick={handleToggle} className={isRunning ? "bg-warning hover:bg-warning/90" : ""}>
-              {isRunning ? (
-                <>
-                  <Pause className="h-5 w-5 mr-2" />
-                  Pause
-                </>
-              ) : (
-                <>
-                  <Play className="h-5 w-5 mr-2" />
-                  Start
-                </>
-              )}
-            </Button>
-            {time > 0 && (
-              <Button size="lg" variant="outline" onClick={handleStop}>
-                <Square className="h-5 w-5" />
+        {hasNoProjects ? (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {isBoss
+                ? "Create a project first to start tracking time. Go to the Projects page to get started."
+                : "No projects available yet. Contact your admin to create projects before tracking time."}
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <div className="text-4xl font-mono font-bold tabular-nums">{formatTime(time)}</div>
+            <Input
+              placeholder="What are you working on?"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="flex-1"
+              disabled={hasNoProjects}
+            />
+            <Select value={selectedProject} onValueChange={setSelectedProject} disabled={hasNoProjects}>
+              <SelectTrigger className="w-full md:w-52">
+                <SelectValue placeholder="Select project" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableProjects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    <div className="flex items-center gap-2">
+                      <div className={`h-3 w-3 rounded-full ${project.color}`} />
+                      {project.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-2">
+              <Button
+                size="lg"
+                onClick={handleToggle}
+                className={isRunning ? "bg-warning hover:bg-warning/90" : ""}
+                disabled={hasNoProjects || !selectedProject}
+              >
+                {isRunning ? (
+                  <>
+                    <Pause className="h-5 w-5 mr-2" />
+                    Pause
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-5 w-5 mr-2" />
+                    Start
+                  </>
+                )}
               </Button>
-            )}
+              {time > 0 && (
+                <Button size="lg" variant="outline" onClick={handleStop}>
+                  <Square className="h-5 w-5" />
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   )

@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
 
 const navigation = [
   { name: "Timer", href: "/", icon: Timer, active: true },
@@ -23,11 +24,19 @@ const navigation = [
 
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
+  const { user, logout } = useAuth()
 
-  const handleLogout = () => {
-    console.log("Logging out...")
-    // Add your logout logic here (clear session, redirect to login, etc.)
-    window.location.href = "/login"
+  const handleLogout = async () => {
+    await logout()
+  }
+
+  // Get user initials for avatar
+  const getInitials = (email: string) => {
+    const parts = email.split('@')[0].split('.')
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+    }
+    return email.substring(0, 2).toUpperCase()
   }
 
   return (
@@ -77,34 +86,40 @@ export function Sidebar() {
 
           {/* User section */}
           <div className="p-4 border-t border-border">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full flex items-center gap-3 px-4 py-3 h-auto hover:bg-muted"
-                >
-                  <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
-                    <span className="text-sm font-medium text-primary">JD</span>
-                  </div>
-                  <div className="flex-1 min-w-0 text-left">
-                    <p className="text-sm font-medium truncate">John Doe</p>
-                    <p className="text-xs text-muted-foreground truncate">john@example.com</p>
-                  </div>
-                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem className="cursor-pointer">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Account Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer text-destructive" onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {user && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full flex items-center gap-3 px-4 py-3 h-auto hover:bg-muted"
+                  >
+                    <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
+                      <span className="text-sm font-medium text-primary">
+                        {getInitials(user.email)}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-sm font-medium truncate">{user.email}</p>
+                      <p className="text-xs text-muted-foreground truncate capitalize">
+                        {user.role}
+                      </p>
+                    </div>
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Account Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="cursor-pointer text-destructive" onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
       </aside>

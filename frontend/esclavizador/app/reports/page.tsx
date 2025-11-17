@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { ProtectedRoute } from "@/components/protected-route"
 import { Sidebar } from "@/components/sidebar"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -134,9 +135,10 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
-      <main className="lg:pl-64">
+    <ProtectedRoute>
+      <div className="min-h-screen bg-background">
+        <Sidebar />
+        <main className="lg:pl-64">
         <div className="p-8 space-y-6">
           {/* Header with Filters */}
           <div className="flex items-center justify-between">
@@ -416,5 +418,6 @@ export default function ReportsPage() {
         </div>
       </main>
     </div>
+    </ProtectedRoute>
   )
 }

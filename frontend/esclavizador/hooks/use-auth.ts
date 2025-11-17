@@ -1,0 +1,11 @@
+/**
+ * Hook to access authentication context
+ *
+ * Provides user state and auth actions (login, register, logout)
+ */
+
+import { useAuthContext } from '@/contexts/auth-context'
+
+export function useAuth() {
+  return useAuthContext()
+}

@@ -3,7 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Clock, TrendingUp, Target } from "lucide-react"
 
-const stats = [
+// Mock stats - will be replaced with real calculations from time entries
+const mockStats = [
   {
     title: "Today's Total",
     value: "5h 15m",
@@ -27,7 +28,37 @@ const stats = [
   },
 ]
 
+// Empty state stats - shown when no time entries exist
+const emptyStats = [
+  {
+    title: "Today's Total",
+    value: "0h 0m",
+    change: "Start tracking",
+    icon: Clock,
+    color: "text-chart-1",
+  },
+  {
+    title: "This Week",
+    value: "0h 0m",
+    change: "No entries yet",
+    icon: TrendingUp,
+    color: "text-chart-2",
+  },
+  {
+    title: "Weekly Goal",
+    value: "0%",
+    change: "0h / 40h",
+    icon: Target,
+    color: "text-chart-3",
+  },
+]
+
 export function Analytics() {
+  // TODO: Calculate stats from real time entries
+  // For now, use mock data. When time entries are empty, use emptyStats
+  const hasTimeEntries = true // Will be: timeEntries.length > 0
+  const stats = hasTimeEntries ? mockStats : emptyStats
+
   return (
     <>
       {stats.map((stat) => (

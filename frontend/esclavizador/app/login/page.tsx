@@ -1,54 +1,91 @@
 "use client"
 
 import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import { Clock } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { useRouter } from 'next/navigation'
+import { useAuth } from "@/hooks/use-auth"
+import { toast } from "sonner"
+
+// Login form validation schema
+const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+})
+
+type LoginFormData = z.infer<typeof loginSchema>
+
+// Register form validation schema
+const registerSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one digit")
+    .regex(/[^a-zA-Z0-9]/, "Password must contain at least one special character"),
+  organization: z.string().min(2, "Organization name must be at least 2 characters"),
+})
+
+type RegisterFormData = z.infer<typeof registerSchema>
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  })
-
+  const { login, register } = useAuth()
   const [createAccountOpen, setCreateAccountOpen] = useState(false)
-  const [createAccountData, setCreateAccountData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    organization: "",
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
+  const [isRegistering, setIsRegistering] = useState(false)
+
+  // Login form
+  const loginForm = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log("Login attempt:", formData)
-    router.push("/")
+  // Register form
+  const registerForm = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      organization: "",
+    },
+  })
+
+  const handleLoginSubmit = async (data: LoginFormData) => {
+    setIsLoggingIn(true)
+    try {
+      await login(data.email, data.password)
+      toast.success("Logged in successfully")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Login failed"
+      toast.error(message)
+    } finally {
+      setIsLoggingIn(false)
+    }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }))
-  }
-
-  const handleCreateAccountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCreateAccountData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }))
-  }
-
-  const handleCreateAccountSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log("Create account:", createAccountData)
-    setCreateAccountOpen(false)
-    router.push("/")
+  const handleRegisterSubmit = async (data: RegisterFormData) => {
+    setIsRegistering(true)
+    try {
+      await register(data.email, data.password, data.organization)
+      toast.success("Account created successfully")
+      setCreateAccountOpen(false)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Registration failed"
+      toast.error(message)
+    } finally {
+      setIsRegistering(false)
+    }
   }
 
   return (
@@ -57,39 +94,43 @@ export default function LoginPage() {
         <CardHeader className="space-y-1 flex flex-col items-center">
           <div className="flex items-center gap-2 mb-2">
             <Clock className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-semibold">TimeTrack</span>
+            <span className="text-2xl font-semibold">Esclavizador</span>
           </div>
           <CardTitle className="text-2xl">Welcome back</CardTitle>
           <CardDescription>Enter your credentials to access your account</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={loginForm.handleSubmit(handleLoginSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
-                name="email"
                 type="email"
                 placeholder="john@example.com"
-                value={formData.email}
-                onChange={handleChange}
-                required
+                {...loginForm.register("email")}
               />
+              {loginForm.formState.errors.email && (
+                <p className="text-sm text-destructive">
+                  {loginForm.formState.errors.email.message}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
-                name="password"
                 type="password"
                 placeholder="••••••••"
-                value={formData.password}
-                onChange={handleChange}
-                required
+                {...loginForm.register("password")}
               />
+              {loginForm.formState.errors.password && (
+                <p className="text-sm text-destructive">
+                  {loginForm.formState.errors.password.message}
+                </p>
+              )}
             </div>
-            <Button type="submit" className="w-full">
-              Sign in
+            <Button type="submit" className="w-full" disabled={isLoggingIn}>
+              {isLoggingIn ? "Signing in..." : "Sign in"}
             </Button>
             <div className="text-center text-sm text-muted-foreground">
               New here?{" "}
@@ -103,60 +144,54 @@ export default function LoginPage() {
                   <DialogHeader>
                     <DialogTitle>Create account</DialogTitle>
                     <DialogDescription>
-                      Enter your details to create a new account
+                      Enter your details to create a new account and organization
                     </DialogDescription>
                   </DialogHeader>
-                  <form onSubmit={handleCreateAccountSubmit} className="space-y-4 mt-4">
+                  <form onSubmit={registerForm.handleSubmit(handleRegisterSubmit)} className="space-y-4 mt-4">
                     <div className="space-y-2">
-                      <Label htmlFor="create-name">Name</Label>
+                      <Label htmlFor="register-email">Email</Label>
                       <Input
-                        id="create-name"
-                        name="name"
-                        type="text"
-                        placeholder="John Doe"
-                        value={createAccountData.name}
-                        onChange={handleCreateAccountChange}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="create-email">Email</Label>
-                      <Input
-                        id="create-email"
-                        name="email"
+                        id="register-email"
                         type="email"
                         placeholder="john@example.com"
-                        value={createAccountData.email}
-                        onChange={handleCreateAccountChange}
-                        required
+                        {...registerForm.register("email")}
                       />
+                      {registerForm.formState.errors.email && (
+                        <p className="text-sm text-destructive">
+                          {registerForm.formState.errors.email.message}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="create-password">Password</Label>
+                      <Label htmlFor="register-password">Password</Label>
                       <Input
-                        id="create-password"
-                        name="password"
+                        id="register-password"
                         type="password"
                         placeholder="••••••••"
-                        value={createAccountData.password}
-                        onChange={handleCreateAccountChange}
-                        required
+                        {...registerForm.register("password")}
                       />
+                      {registerForm.formState.errors.password && (
+                        <p className="text-sm text-destructive">
+                          {registerForm.formState.errors.password.message}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="create-organization">Organization Name</Label>
+                      <Label htmlFor="register-organization">Organization Name</Label>
                       <Input
-                        id="create-organization"
-                        name="organization"
+                        id="register-organization"
                         type="text"
                         placeholder="Your organization"
-                        value={createAccountData.organization}
-                        onChange={handleCreateAccountChange}
-                        required
+                        {...registerForm.register("organization")}
                       />
+                      {registerForm.formState.errors.organization && (
+                        <p className="text-sm text-destructive">
+                          {registerForm.formState.errors.organization.message}
+                        </p>
+                      )}
                     </div>
-                    <Button type="submit" className="w-full">
-                      Create account
+                    <Button type="submit" className="w-full" disabled={isRegistering}>
+                      {isRegistering ? "Creating account..." : "Create account"}
                     </Button>
                   </form>
                 </DialogContent>

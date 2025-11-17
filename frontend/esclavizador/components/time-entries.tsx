@@ -1,10 +1,11 @@
 "use client"
 
-import { MoreHorizontal, Play, Trash2 } from "lucide-react"
+import { MoreHorizontal, Play, Trash2, Clock } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { EmptyState } from "@/components/empty-state"
 
 const entries = [
   {
@@ -55,14 +56,31 @@ const entries = [
 ]
 
 export function TimeEntries() {
+  // TODO: Replace with real data from useTimeEntries hook
+  const timeEntries = entries
+
   return (
     <Card className="border-border">
       <CardHeader>
         <CardTitle>Recent Time Entries</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-2">
-          {entries.map((entry) => (
+        {timeEntries.length === 0 ? (
+          <EmptyState
+            icon={Clock}
+            title="No time entries yet"
+            description="Start tracking your time by using the timer above or create a manual entry."
+            action={{
+              label: "Start Timer",
+              onClick: () => {
+                // Scroll to timer at top of page
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              },
+            }}
+          />
+        ) : (
+          <div className="space-y-2">
+            {timeEntries.map((entry) => (
             <div
               key={entry.id}
               className="flex items-center gap-4 p-4 rounded-lg hover:bg-muted/50 transition-colors group"
@@ -109,7 +127,8 @@ export function TimeEntries() {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

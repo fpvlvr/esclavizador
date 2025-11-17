@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { ProtectedRoute } from "@/components/protected-route"
 import { Sidebar } from "@/components/sidebar"
 import { Plus, Trash2, Pencil } from 'lucide-react'
 import { Button } from "@/components/ui/button"
@@ -137,9 +138,10 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-      <main className="flex-1 lg:ml-64 p-8">
+    <ProtectedRoute>
+      <div className="flex min-h-screen bg-background">
+        <Sidebar />
+        <main className="flex-1 lg:ml-64 p-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
@@ -410,5 +412,6 @@ export default function UsersPage() {
         </div>
       </main>
     </div>
+    </ProtectedRoute>
   )
 }
