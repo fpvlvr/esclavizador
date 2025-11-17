@@ -231,5 +231,5 @@ __marimo__/
 # Logs directory
 logs/
 
-ai/
+ai-knowledge/
 local/

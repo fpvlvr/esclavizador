@@ -4,7 +4,7 @@ IMPORTANT: Always use this rule when you create new or modify existing code
 - Do not create self-evident docstrings
 
 # Documentation Guidelines
-IMPORTANT: Always use this rule when asked to document the progress/implementation details/current featureNo state
+IMPORTANT: Always use this rule when asked to document the progress/implementation details/current feature state
 
 **Audience:** Claude (you) after context reset
 **Purpose:** Enable picking up work seamlessly
