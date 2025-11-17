@@ -108,8 +108,7 @@ export function useTasks(): UseTasksReturn {
       }
 
       toast.success('Task deleted successfully')
-      // Remove the task from local state
-      setTasks(prev => prev.filter(task => task.id !== id))
+      // Note: Caller manages task state refresh
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete task'
       toast.error(message)

@@ -4,10 +4,20 @@ import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ChevronDown, ChevronRight, Clock, Plus, FolderKanban, Users } from 'lucide-react'
+import { ChevronDown, ChevronRight, Clock, Plus, FolderKanban, Users, Trash2 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { EmptyState } from "@/components/empty-state"
@@ -19,6 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 interface ProjectListProps {
   projects: ProjectResponse[]
   loading: boolean
+  onDeleteProject?: (projectId: string) => Promise<void>
 }
 
 interface ProjectTasksState {
@@ -28,9 +39,9 @@ interface ProjectTasksState {
   }
 }
 
-export function ProjectList({ projects, loading }: ProjectListProps) {
+export function ProjectList({ projects, loading, onDeleteProject }: ProjectListProps) {
   const { user } = useAuth()
-  const { createTask } = useTasks()
+  const { createTask, deleteTask } = useTasks()
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
   const [projectTasks, setProjectTasks] = useState<ProjectTasksState>({})
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false)
@@ -39,6 +50,11 @@ export function ProjectList({ projects, loading }: ProjectListProps) {
   const [newTaskName, setNewTaskName] = useState("")
   const [newTaskDescription, setNewTaskDescription] = useState("")
   const [isCreatingTask, setIsCreatingTask] = useState(false)
+  const [deleteProjectDialogOpen, setDeleteProjectDialogOpen] = useState(false)
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null)
+  const [deleteTaskDialogOpen, setDeleteTaskDialogOpen] = useState(false)
+  const [taskToDelete, setTaskToDelete] = useState<{ taskId: string; projectId: string } | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const isBoss = user?.role === 'boss'
 
@@ -143,6 +159,54 @@ export function ProjectList({ projects, loading }: ProjectListProps) {
     setIsAddProjectDialogOpen(true)
   }
 
+  const handleDeleteProjectClick = (projectId: string) => {
+    setProjectToDelete(projectId)
+    setDeleteProjectDialogOpen(true)
+  }
+
+  const handleConfirmDeleteProject = async () => {
+    if (!projectToDelete || !onDeleteProject) return
+
+    setIsDeleting(true)
+    try {
+      await onDeleteProject(projectToDelete)
+      setDeleteProjectDialogOpen(false)
+      setProjectToDelete(null)
+    } catch (error) {
+      // Error already shown via toast
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleDeleteTaskClick = (taskId: string, projectId: string) => {
+    setTaskToDelete({ taskId, projectId })
+    setDeleteTaskDialogOpen(true)
+  }
+
+  const handleConfirmDeleteTask = async () => {
+    if (!taskToDelete) return
+
+    setIsDeleting(true)
+    try {
+      await deleteTask(taskToDelete.taskId)
+
+      // Invalidate cache for this project to force refetch on next expansion
+      setProjectTasks(prev => {
+        const updated = { ...prev }
+        delete updated[taskToDelete.projectId]
+        return updated
+      })
+
+      setDeleteTaskDialogOpen(false)
+      setTaskToDelete(null)
+    } catch (error) {
+      // Error already shown via toast
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   // Show loading skeleton
   if (loading) {
     return (
@@ -219,19 +283,34 @@ export function ProjectList({ projects, loading }: ProjectListProps) {
                   )}
                 </div>
 
-                {/* Task count */}
-                {isExpanded && (
-                  <div className="text-sm text-muted-foreground">
-                    {projectTasksList.length} {projectTasksList.length === 1 ? 'task' : 'tasks'}
-                  </div>
-                )}
+                {/* Task count and delete button */}
+                <div className="flex items-center gap-3">
+                  {isExpanded && (
+                    <div className="text-sm text-muted-foreground">
+                      {projectTasksList.length} {projectTasksList.length === 1 ? 'task' : 'tasks'}
+                    </div>
+                  )}
+                  {isBoss && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteProjectClick(project.id)
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Expanded Task List */}
             {isExpanded && (
-              <CardContent className="pt-0">
-                <div className="space-y-3 ml-10">
+              <CardContent className="pt-4 px-6 pb-6">
+                <div className="space-y-3">
                   <Button
                     variant="outline"
                     size="sm"
@@ -270,6 +349,19 @@ export function ProjectList({ projects, loading }: ProjectListProps) {
                             <p className="text-sm text-muted-foreground">{task.description}</p>
                           )}
                         </div>
+                        {isBoss && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteTaskClick(task.id, project.id)
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     ))
                   )}
@@ -324,6 +416,50 @@ export function ProjectList({ projects, loading }: ProjectListProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Project Confirmation Dialog */}
+      <AlertDialog open={deleteProjectDialogOpen} onOpenChange={setDeleteProjectDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Project</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this project? This action cannot be undone and will also delete all tasks associated with this project.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteProject}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Task Confirmation Dialog */}
+      <AlertDialog open={deleteTaskDialogOpen} onOpenChange={setDeleteTaskDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Task</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this task? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteTask}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

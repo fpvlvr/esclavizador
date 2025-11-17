@@ -23,7 +23,7 @@ import { useAuth } from "@/hooks/use-auth"
 
 export default function ProjectsPage() {
   const { user } = useAuth()
-  const { projects, loading, createProject } = useProjects()
+  const { projects, loading, createProject, deleteProject } = useProjects()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [projectName, setProjectName] = useState("")
   const [projectDescription, setProjectDescription] = useState("")
@@ -109,7 +109,7 @@ export default function ProjectsPage() {
               )}
             </div>
 
-            <ProjectList projects={projects} loading={loading} />
+            <ProjectList projects={projects} loading={loading} onDeleteProject={deleteProject} />
           </div>
         </main>
       </div>
