@@ -98,29 +98,43 @@ class UserRepository(BaseRepository[User, UserData]):
         return self._to_dict(user)
 
     async def update(self, user_id: str, data: dict) -> Optional[UserData]:
-        """
-        Update user fields.
-
-        Args:
-            user_id: User UUID
-            data: Dict of fields to update (e.g., {"is_active": False})
-
-        Returns:
-            Updated user data dict, or None if not found
-        """
+        """Generic update - accepts any dict of User model fields."""
         user = await User.filter(id=user_id).first()
 
         if not user:
             return None
 
-        # Update fields
         for key, value in data.items():
             setattr(user, key, value)
 
         await user.save()
-
-        # Convert ORM → UserData dict using _to_dict
         return self._to_dict(user)
+
+    async def list(
+        self,
+        org_id: str,
+        filters: dict,
+        limit: int,
+        offset: int
+    ) -> dict:
+        """Multi-tenant list - auto-filtered by org_id."""
+        query = self.model.filter(organization_id=org_id)
+
+        if 'is_active' in filters and filters['is_active'] is not None:
+            query = query.filter(is_active=filters['is_active'])
+
+        if 'role' in filters and filters['role'] is not None:
+            query = query.filter(role=filters['role'])
+
+        total = await query.count()
+        users = await query.offset(offset).limit(limit).order_by('-created_at').all()
+
+        return {
+            "items": [self._to_dict(user) for user in users],
+            "total": total,
+            "limit": limit,
+            "offset": offset
+        }
 
 
 # Singleton instance

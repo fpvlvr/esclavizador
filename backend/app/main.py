@@ -87,7 +87,7 @@ async def root() -> JSONResponse:
 
 
 # API Routers
-from app.api.v1 import auth, projects, tasks, time_entries, tags
+from app.api.v1 import auth, projects, tasks, time_entries, tags, users
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
@@ -95,3 +95,4 @@ app.include_router(projects.router, prefix="/api/v1/projects", tags=["Projects"]
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["Tasks"])
 app.include_router(time_entries.router, prefix="/api/v1/time-entries", tags=["Time Entries"])
 app.include_router(tags.router, prefix="/api/v1/tags", tags=["Tags"])
+app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
