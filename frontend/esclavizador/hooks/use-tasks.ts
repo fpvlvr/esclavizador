@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   listTasksApiV1TasksGet,
   createTaskApiV1TasksPost,
@@ -17,9 +17,10 @@ interface UseTasksReturn {
   createTask: (data: TaskCreate) => Promise<void>
   updateTask: (id: string, data: TaskUpdate) => Promise<void>
   deleteTask: (id: string) => Promise<void>
+  refetch: () => Promise<void>
 }
 
-export function useTasks(): UseTasksReturn {
+export function useTasks(projectId?: string): UseTasksReturn {
   const [tasks, setTasks] = useState<TaskResponse[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -116,6 +117,21 @@ export function useTasks(): UseTasksReturn {
     }
   }
 
+  // Auto-fetch tasks when projectId changes
+  useEffect(() => {
+    if (projectId) {
+      fetchTasks(projectId)
+    } else {
+      setTasks([])
+    }
+  }, [projectId, fetchTasks])
+
+  const refetch = useCallback(async () => {
+    if (projectId) {
+      await fetchTasks(projectId)
+    }
+  }, [projectId, fetchTasks])
+
   return {
     tasks,
     loading,
@@ -124,5 +140,6 @@ export function useTasks(): UseTasksReturn {
     createTask,
     updateTask,
     deleteTask,
+    refetch,
   }
 }

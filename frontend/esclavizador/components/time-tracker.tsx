@@ -1,63 +1,28 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Play, Pause, Square, AlertCircle } from 'lucide-react'
+import { useState } from "react"
+import { Play, Square, AlertCircle } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/hooks/use-auth"
-
-const projects = [
-  { id: "1", name: "Website Redesign", color: "bg-chart-1" },
-  { id: "2", name: "Mobile App Development", color: "bg-chart-2" },
-  { id: "3", name: "API Integration", color: "bg-chart-3" },
-  { id: "4", name: "Marketing Campaign", color: "bg-chart-4" },
-]
-
-const allTasks = [
-  { id: "1-1", name: "Homepage mockup", projectId: "1", projectName: "Website Redesign", projectColor: "bg-chart-1" },
-  { id: "1-2", name: "Component library", projectId: "1", projectName: "Website Redesign", projectColor: "bg-chart-1" },
-  { id: "1-3", name: "Mobile responsive", projectId: "1", projectName: "Website Redesign", projectColor: "bg-chart-1" },
-  { id: "2-1", name: "Authentication flow", projectId: "2", projectName: "Mobile App Development", projectColor: "bg-chart-2" },
-  { id: "2-2", name: "Push notifications", projectId: "2", projectName: "Mobile App Development", projectColor: "bg-chart-2" },
-  { id: "2-3", name: "Offline mode", projectId: "2", projectName: "Mobile App Development", projectColor: "bg-chart-2" },
-  { id: "2-4", name: "UI polish", projectId: "2", projectName: "Mobile App Development", projectColor: "bg-chart-2" },
-  { id: "3-1", name: "REST API endpoints", projectId: "3", projectName: "API Integration", projectColor: "bg-chart-3" },
-  { id: "3-2", name: "GraphQL schema", projectId: "3", projectName: "API Integration", projectColor: "bg-chart-3" },
-  { id: "3-3", name: "API documentation", projectId: "3", projectName: "API Integration", projectColor: "bg-chart-3" },
-  { id: "4-1", name: "Social media content", projectId: "4", projectName: "Marketing Campaign", projectColor: "bg-chart-4" },
-  { id: "4-2", name: "Email campaigns", projectId: "4", projectName: "Marketing Campaign", projectColor: "bg-chart-4" },
-  { id: "4-3", name: "Landing page copy", projectId: "4", projectName: "Marketing Campaign", projectColor: "bg-chart-4" },
-]
+import { useProjects } from "@/hooks/use-projects"
+import { useTimer } from "@/hooks/use-timer"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function TimeTracker() {
   const { user } = useAuth()
-  const [isRunning, setIsRunning] = useState(false)
-  const [time, setTime] = useState(0)
+  const { projects, loading: projectsLoading } = useProjects()
+  const { runningEntry, elapsedSeconds, isRunning, loading: timerLoading, startTimer, stopTimer } = useTimer()
+
   const [description, setDescription] = useState("")
   const [selectedProject, setSelectedProject] = useState("")
-  const [selectedTask, setSelectedTask] = useState("")
 
-  // TODO: Replace with real data from useProjects hook
-  const availableProjects = projects
   const isBoss = user?.role === 'boss'
-  const hasNoProjects = availableProjects.length === 0
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout | undefined
-
-    if (isRunning) {
-      interval = setInterval(() => {
-        setTime((prev) => prev + 1)
-      }, 1000)
-    }
-
-    return () => {
-      if (interval) clearInterval(interval)
-    }
-  }, [isRunning])
+  const hasNoProjects = projects.length === 0
+  const loading = projectsLoading || timerLoading
 
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600)
@@ -66,30 +31,48 @@ export function TimeTracker() {
     return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
-  const handleToggle = () => {
-    setIsRunning(!isRunning)
-  }
+  const handleStart = async () => {
+    if (!selectedProject) return
 
-  const handleStop = () => {
-    setIsRunning(false)
-    setTime(0)
-    setDescription("")
-    setSelectedProject("")
-    setSelectedTask("")
-  }
-
-  const handleTaskSelect = (taskId: string) => {
-    setSelectedTask(taskId)
-    const task = allTasks.find(t => t.id === taskId)
-    if (task) {
-      setSelectedProject(task.projectId)
-      setDescription(task.name)
+    try {
+      await startTimer({
+        project_id: selectedProject,
+        description: description || null,
+        is_billable: false,
+      })
+    } catch (err) {
+      console.error('Failed to start timer:', err)
     }
+  }
+
+  const handleStop = async () => {
+    try {
+      await stopTimer()
+      setDescription("")
+      setSelectedProject("")
+    } catch (err) {
+      console.error('Failed to stop timer:', err)
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card className="border-border">
+        <CardContent className="px-6 py-4">
+          <div className="flex flex-col md:flex-row items-center gap-3">
+            <Skeleton className="h-12 w-32" />
+            <Skeleton className="h-10 flex-1" />
+            <Skeleton className="h-10 w-52" />
+            <Skeleton className="h-10 w-24" />
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
     <Card className="border-border">
-      <CardContent className="p-6">
+      <CardContent className="px-6 py-4">
         {hasNoProjects ? (
           <Alert>
             <AlertCircle className="h-4 w-4" />
@@ -100,24 +83,31 @@ export function TimeTracker() {
             </AlertDescription>
           </Alert>
         ) : (
-          <div className="flex flex-col md:flex-row items-center gap-4">
-            <div className="text-4xl font-mono font-bold tabular-nums">{formatTime(time)}</div>
+          <div className="flex flex-col md:flex-row items-center gap-3">
+            <div className="text-4xl font-mono font-bold tabular-nums">{formatTime(elapsedSeconds)}</div>
             <Input
               placeholder="What are you working on?"
-              value={description}
+              value={isRunning ? (runningEntry?.description ?? "") : description}
               onChange={(e) => setDescription(e.target.value)}
               className="flex-1"
-              disabled={hasNoProjects}
+              disabled={isRunning}
             />
-            <Select value={selectedProject} onValueChange={setSelectedProject} disabled={hasNoProjects}>
+            <Select
+              value={isRunning ? runningEntry?.project_id : selectedProject}
+              onValueChange={setSelectedProject}
+              disabled={isRunning}
+            >
               <SelectTrigger className="w-full md:w-52">
                 <SelectValue placeholder="Select project" />
               </SelectTrigger>
               <SelectContent>
-                {availableProjects.map((project) => (
+                {projects.map((project) => (
                   <SelectItem key={project.id} value={project.id}>
                     <div className="flex items-center gap-2">
-                      <div className={`h-3 w-3 rounded-full ${project.color}`} />
+                      <div
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: project.color }}
+                      />
                       {project.name}
                     </div>
                   </SelectItem>
@@ -125,27 +115,19 @@ export function TimeTracker() {
               </SelectContent>
             </Select>
             <div className="flex items-center gap-2">
-              <Button
-                size="lg"
-                onClick={handleToggle}
-                className={isRunning ? "bg-warning hover:bg-warning/90" : ""}
-                disabled={hasNoProjects || !selectedProject}
-              >
-                {isRunning ? (
-                  <>
-                    <Pause className="h-5 w-5 mr-2" />
-                    Pause
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-5 w-5 mr-2" />
-                    Start
-                  </>
-                )}
-              </Button>
-              {time > 0 && (
+              {isRunning ? (
                 <Button size="lg" variant="outline" onClick={handleStop}>
-                  <Square className="h-5 w-5" />
+                  <Square className="h-5 w-5 mr-2" />
+                  Stop
+                </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  onClick={handleStart}
+                  disabled={!selectedProject}
+                >
+                  <Play className="h-5 w-5 mr-2" />
+                  Start
                 </Button>
               )}
             </div>

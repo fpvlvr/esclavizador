@@ -458,7 +458,7 @@ class TimeTrackingService:
 
         # 8. Validate task if being updated
         if 'task_id' in update_dict and update_dict['task_id']:
-            project_id = UUID(update_dict.get('project_id', entry['project_id']))
+            project_id = update_dict.get('project_id', entry['project_id'])
             task = await task_repo.get_by_id(str(update_dict['task_id']), str(org_id))
             if not task or task["project_id"] != project_id:
                 raise HTTPException(
