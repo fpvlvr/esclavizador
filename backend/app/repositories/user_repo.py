@@ -5,9 +5,14 @@ Returns UserData TypedDicts for ORM independence.
 """
 
 from typing import Optional
+from datetime import date
+from tortoise.queryset import Q
+from tortoise.functions import Sum
 
 from app.models.user import User, UserRole
 from app.models.organization import Organization
+from app.models.time_entry import TimeEntry
+from app.models.project import Project
 from app.repositories.base import BaseRepository
 from app.domain.entities import UserData
 
@@ -131,6 +136,89 @@ class UserRepository(BaseRepository[User, UserData]):
 
         return {
             "items": [self._to_dict(user) for user in users],
+            "total": total,
+            "limit": limit,
+            "offset": offset
+        }
+
+    async def list_stats(
+        self,
+        org_id: str,
+        start_date: Optional[date],
+        end_date: Optional[date],
+        filters: dict,
+        limit: int,
+        offset: int
+    ) -> dict:
+        """
+        List users with aggregated stats (projects + time).
+
+        For each user, calculates:
+        - total_time_seconds: Sum of completed time entries in date range
+        - projects: Unique projects worked on in date range
+        """
+        # Base query - users in org
+        query = self.model.filter(organization_id=org_id)
+
+        if 'is_active' in filters and filters['is_active'] is not None:
+            query = query.filter(is_active=filters['is_active'])
+
+        if 'role' in filters and filters['role'] is not None:
+            query = query.filter(role=filters['role'])
+
+        total = await query.count()
+        users = await query.offset(offset).limit(limit).order_by('-created_at').all()
+
+        # For each user, fetch stats
+        items = []
+        for user in users:
+            # Build time entry filter for date range
+            time_entry_filter = Q(user_id=user.id)
+
+            if start_date:
+                time_entry_filter &= Q(start_time__gte=start_date)
+
+            if end_date:
+                # Include entries that started before end of day
+                time_entry_filter &= Q(start_time__lt=end_date)
+
+            # Calculate total time (only completed entries have duration)
+            time_entries = await TimeEntry.filter(time_entry_filter, is_running=False).all()
+
+            total_seconds = 0
+            for entry in time_entries:
+                if entry.end_time and entry.start_time:
+                    duration = (entry.end_time - entry.start_time).total_seconds()
+                    total_seconds += int(duration)
+
+            # Get unique projects (with prefetch for efficiency)
+            project_ids = set()
+            for entry in time_entries:
+                project_ids.add(entry.project_id)
+
+            # Fetch project details
+            projects = []
+            if project_ids:
+                project_objs = await Project.filter(id__in=list(project_ids)).all()
+                projects = [
+                    {
+                        "id": p.id,
+                        "name": p.name,
+                        "color": p.color
+                    }
+                    for p in project_objs
+                ]
+
+            # Build user stats dict
+            user_stats = {
+                **self._to_dict(user),
+                "total_time_seconds": total_seconds,
+                "projects": projects
+            }
+            items.append(user_stats)
+
+        return {
+            "items": items,
             "total": total,
             "limit": limit,
             "offset": offset

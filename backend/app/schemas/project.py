@@ -22,12 +22,18 @@ class ProjectCreate(BaseModel):
         default=None,
         description="Project description (optional)"
     )
+    color: Optional[str] = Field(
+        default=None,
+        pattern=r"^#[0-9a-fA-F]{6}$",
+        description="Project color in hex format (optional, auto-generated if not provided)"
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "name": "Website Redesign",
-                "description": "Complete redesign of company website"
+                "description": "Complete redesign of company website",
+                "color": "#3b82f6"
             }
         }
     )
@@ -46,6 +52,11 @@ class ProjectUpdate(BaseModel):
         default=None,
         description="Project description"
     )
+    color: Optional[str] = Field(
+        default=None,
+        pattern=r"^#[0-9a-fA-F]{6}$",
+        description="Project color in hex format"
+    )
     is_active: Optional[bool] = Field(
         default=None,
         description="Active status (soft delete)"
@@ -56,6 +67,7 @@ class ProjectUpdate(BaseModel):
             "example": {
                 "name": "Website Redesign V2",
                 "description": "Updated description",
+                "color": "#10b981",
                 "is_active": True
             }
         }
@@ -68,6 +80,7 @@ class ProjectResponse(BaseModel):
     id: UUID = Field(description="Project unique identifier")
     name: str = Field(description="Project name")
     description: Optional[str] = Field(description="Project description")
+    color: str = Field(description="Project color in hex format")
     organization_id: UUID = Field(description="Organization ID")
     is_active: bool = Field(description="Active status")
     created_at: datetime = Field(description="Creation timestamp")
@@ -83,6 +96,7 @@ class ProjectResponse(BaseModel):
                 "id": "123e4567-e89b-12d3-a456-426614174000",
                 "name": "Website Redesign",
                 "description": "Complete redesign of company website",
+                "color": "#3b82f6",
                 "organization_id": "123e4567-e89b-12d3-a456-426614174001",
                 "is_active": True,
                 "created_at": "2025-01-15T12:00:00Z",

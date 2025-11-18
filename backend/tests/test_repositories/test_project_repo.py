@@ -18,6 +18,7 @@ class TestProjectRepository:
         project = await project_repo.create(
             name="New Project",
             description="Test description",
+            color="#3b82f6",
             org_id=test_org["id"]
         )
 
@@ -37,6 +38,7 @@ class TestProjectRepository:
         created_project = await project_repo.create(
             name="Test Project",
             description="Test description",
+            color="#10b981",
             org_id=test_org["id"]
         )
 
@@ -60,6 +62,7 @@ class TestProjectRepository:
         created_project = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#f59e0b",
             org_id=test_org["id"]
         )
 
@@ -87,6 +90,7 @@ class TestProjectRepository:
         created_project = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#8b5cf6",
             org_id=test_org["id"]
         )
 
@@ -104,9 +108,9 @@ class TestProjectRepository:
     async def test_list_projects(self, test_org):
         """Test listing projects in an organization."""
         # Create multiple projects via repository
-        project1 = await project_repo.create(name="Project 1", description=None, org_id=test_org["id"])
-        project2 = await project_repo.create(name="Project 2", description=None, org_id=test_org["id"])
-        project3 = await project_repo.create(name="Project 3", description=None, org_id=test_org["id"])
+        project1 = await project_repo.create(name="Project 1", description=None, color="#3b82f6", org_id=test_org["id"])
+        project2 = await project_repo.create(name="Project 2", description=None, color="#10b981", org_id=test_org["id"])
+        project3 = await project_repo.create(name="Project 3", description=None, color="#f59e0b", org_id=test_org["id"])
 
         # List projects
         result = await project_repo.list(
@@ -130,6 +134,7 @@ class TestProjectRepository:
         active_project = await project_repo.create(
             name="Active Project",
             description=None,
+            color="#3b82f6",
             org_id=test_org["id"]
         )
 
@@ -137,6 +142,7 @@ class TestProjectRepository:
         inactive_project = await project_repo.create(
             name="Inactive Project",
             description=None,
+            color="#ef4444",
             org_id=test_org["id"]
         )
         # Soft delete to make inactive
@@ -174,6 +180,7 @@ class TestProjectRepository:
         project = await project_repo.create(
             name="Original Name",
             description="Original description",
+            color="#3b82f6",
             org_id=test_org["id"]
         )
 
@@ -197,6 +204,7 @@ class TestProjectRepository:
         project = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#10b981",
             org_id=test_org["id"]
         )
 
@@ -218,6 +226,7 @@ class TestProjectRepository:
         project = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#f59e0b",
             org_id=test_org["id"]
         )
 
@@ -239,6 +248,7 @@ class TestProjectRepository:
         project = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#8b5cf6",
             org_id=test_org["id"]
         )
 

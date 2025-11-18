@@ -92,8 +92,8 @@ class TestStartTimer:
     async def test_start_timer_task_wrong_project(self, test_worker, test_org):
         """Test starting timer with task that doesn't belong to project (404)."""
         # Create two projects and a task in project1
-        project1 = await project_repo.create("Project 1", None, test_org["id"])
-        project2 = await project_repo.create("Project 2", None, test_org["id"])
+        project1 = await project_repo.create("Project 1", None, "#3b82f6", test_org["id"])
+        project2 = await project_repo.create("Project 2", None, "#10b981", test_org["id"])
         task1 = await task_repo.create("Task 1", None, project1["id"])
 
         # Try to start timer on project2 with task from project1

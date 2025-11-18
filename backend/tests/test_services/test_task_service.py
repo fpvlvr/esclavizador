@@ -92,11 +92,13 @@ class TestTaskService:
         project1 = await project_repo.create(
             name="Project 1",
             description=None,
+            color="#3b82f6",
             org_id=test_org["id"]
         )
         project2 = await project_repo.create(
             name="Project 2",
             description=None,
+            color="#10b981",
             org_id=test_org["id"]
         )
 

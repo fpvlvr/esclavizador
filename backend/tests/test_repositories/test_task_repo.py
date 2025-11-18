@@ -19,6 +19,7 @@ class TestTaskRepository:
         project = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#3b82f6",
             org_id=test_org["id"]
         )
 
@@ -46,6 +47,7 @@ class TestTaskRepository:
         project = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#10b981",
             org_id=test_org["id"]
         )
         created_task = await task_repo.create(
@@ -75,6 +77,7 @@ class TestTaskRepository:
         project = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#f59e0b",
             org_id=test_org["id"]
         )
         created_task = await task_repo.create(
@@ -101,6 +104,7 @@ class TestTaskRepository:
         project = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#8b5cf6",
             org_id=test_org["id"]
         )
         task1 = await task_repo.create(name="Task 1", description=None, project_id=project["id"])
@@ -142,11 +146,13 @@ class TestTaskRepository:
         project1 = await project_repo.create(
             name="Project 1",
             description=None,
+            color="#3b82f6",
             org_id=test_org["id"]
         )
         project2 = await project_repo.create(
             name="Project 2",
             description=None,
+            color="#10b981",
             org_id=test_org["id"]
         )
 
@@ -189,6 +195,7 @@ class TestTaskRepository:
         project = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#f59e0b",
             org_id=test_org["id"]
         )
 
@@ -238,6 +245,7 @@ class TestTaskRepository:
         project = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#8b5cf6",
             org_id=test_org["id"]
         )
         task = await task_repo.create(
@@ -271,6 +279,7 @@ class TestTaskRepository:
         project = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#3b82f6",
             org_id=test_org["id"]
         )
         task = await task_repo.create(
@@ -302,6 +311,7 @@ class TestTaskRepository:
         project = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#10b981",
             org_id=test_org["id"]
         )
         task = await task_repo.create(
@@ -333,6 +343,7 @@ class TestTaskRepository:
         project = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#f59e0b",
             org_id=test_org["id"]
         )
         task = await task_repo.create(

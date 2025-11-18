@@ -40,11 +40,13 @@ class TestProjectService:
         project1 = await project_repo.create(
             name="Project 1",
             description=None,
+            color="#3b82f6",
             org_id=test_org["id"]
         )
         project2 = await project_repo.create(
             name="Project 2",
             description=None,
+            color="#10b981",
             org_id=test_org["id"]
         )
 
@@ -70,11 +72,13 @@ class TestProjectService:
         active = await project_repo.create(
             name="Active",
             description=None,
+            color="#f59e0b",
             org_id=test_org["id"]
         )
         inactive = await project_repo.create(
             name="Inactive",
             description=None,
+            color="#8b5cf6",
             org_id=test_org["id"]
         )
         # Soft delete to make inactive
@@ -101,6 +105,7 @@ class TestProjectService:
         created = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#3b82f6",
             org_id=test_org["id"]
         )
 
@@ -131,6 +136,7 @@ class TestProjectService:
         project = await project_repo.create(
             name="Other Org Project",
             description=None,
+            color="#10b981",
             org_id=second_org["id"]
         )
 
@@ -150,6 +156,7 @@ class TestProjectService:
         project = await project_repo.create(
             name="Original",
             description="Original desc",
+            color="#f59e0b",
             org_id=test_org["id"]
         )
 
@@ -177,6 +184,7 @@ class TestProjectService:
         project = await project_repo.create(
             name="Original",
             description="Original desc",
+            color="#8b5cf6",
             org_id=test_org["id"]
         )
 
@@ -213,6 +221,7 @@ class TestProjectService:
         project = await project_repo.create(
             name="Other Org Project",
             description=None,
+            color="#3b82f6",
             org_id=second_org["id"]
         )
 
@@ -236,6 +245,7 @@ class TestProjectService:
         project = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#10b981",
             org_id=test_org["id"]
         )
 
@@ -271,6 +281,7 @@ class TestProjectService:
         project = await project_repo.create(
             name="Other Org Project",
             description=None,
+            color="#f59e0b",
             org_id=second_org["id"]
         )
 
@@ -296,6 +307,7 @@ class TestProjectService:
             p = await project_repo.create(
                 name=f"Project {i}",
                 description=None,
+                color="#3b82f6",
                 org_id=test_org["id"]
             )
             projects.append(p)
@@ -335,6 +347,7 @@ class TestProjectService:
         project = await project_repo.create(
             name="Test Project",
             description=None,
+            color="#8b5cf6",
             org_id=test_org["id"]
         )
 

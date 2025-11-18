@@ -200,6 +200,7 @@ async def test_project(test_org):
     project = await project_repo.create(
         name="Test Project",
         description="Test project description",
+        color="#3b82f6",
         org_id=test_org["id"]
     )
     yield project
@@ -253,6 +254,7 @@ async def second_org_project(second_org):
     project = await project_repo.create(
         name="Second Org Project",
         description=None,
+        color="#10b981",
         org_id=second_org["id"]
     )
     yield project

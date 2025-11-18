@@ -113,3 +113,78 @@ class UserList(BaseModel):
             }
         }
     )
+
+
+class ProjectInfo(BaseModel):
+    """Project info for user stats."""
+
+    id: UUID = Field(description="Project ID")
+    name: str = Field(description="Project name")
+    color: str = Field(description="Project color hex code")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserStatsResponse(BaseModel):
+    """User with aggregated stats (projects + time)."""
+
+    id: UUID = Field(description="User unique identifier")
+    email: EmailStr = Field(description="User email address")
+    role: UserRole = Field(description="User role (boss or worker)")
+    organization_id: UUID = Field(description="Organization ID")
+    is_active: bool = Field(description="Account active status")
+    created_at: datetime = Field(description="Account creation timestamp")
+    total_time_seconds: int = Field(description="Total tracked time in seconds for date range")
+    projects: list[ProjectInfo] = Field(description="Projects user has worked on in date range")
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "example": {
+                "id": "123e4567-e89b-12d3-a456-426614174000",
+                "email": "worker@example.com",
+                "role": "worker",
+                "organization_id": "123e4567-e89b-12d3-a456-426614174001",
+                "is_active": True,
+                "created_at": "2025-01-09T12:00:00Z",
+                "total_time_seconds": 513300,
+                "projects": [
+                    {"id": "123e4567-e89b-12d3-a456-426614174002", "name": "Website Redesign", "color": "#3b82f6"},
+                    {"id": "123e4567-e89b-12d3-a456-426614174003", "name": "Mobile App", "color": "#f59e0b"}
+                ]
+            }
+        }
+    )
+
+
+class UserStatsList(BaseModel):
+    """Paginated user stats list response."""
+
+    items: list[UserStatsResponse] = Field(description="List of users with stats")
+    total: int = Field(description="Total number of users matching filters")
+    limit: int = Field(description="Maximum items per page")
+    offset: int = Field(description="Number of items skipped")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "items": [
+                    {
+                        "id": "123e4567-e89b-12d3-a456-426614174000",
+                        "email": "worker@example.com",
+                        "role": "worker",
+                        "organization_id": "123e4567-e89b-12d3-a456-426614174001",
+                        "is_active": True,
+                        "created_at": "2025-01-09T12:00:00Z",
+                        "total_time_seconds": 513300,
+                        "projects": [
+                            {"id": "123e4567-e89b-12d3-a456-426614174002", "name": "Website Redesign", "color": "#3b82f6"}
+                        ]
+                    }
+                ],
+                "total": 1,
+                "limit": 50,
+                "offset": 0
+            }
+        }
+    )

@@ -1,6 +1,7 @@
 """User service for business logic."""
 
 from typing import Optional
+from datetime import date
 from fastapi import HTTPException, status
 
 from app.domain.entities import UserData
@@ -157,6 +158,39 @@ class UserService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
             )
+
+    async def list_user_stats(
+        self,
+        current_user: UserData,
+        start_date: Optional[date],
+        end_date: Optional[date],
+        is_active: Optional[bool],
+        role: Optional[str],
+        limit: int,
+        offset: int
+    ) -> dict:
+        """
+        Multi-tenant list with stats (projects + time for date range).
+
+        Returns users with total_time_seconds and projects list.
+        """
+        org_id = current_user["organization_id"]
+
+        filters = {}
+        if is_active is not None:
+            filters['is_active'] = is_active
+        if role is not None:
+            filters['role'] = role
+
+        result = await user_repo.list_stats(
+            org_id=org_id,
+            start_date=start_date,
+            end_date=end_date,
+            filters=filters,
+            limit=limit,
+            offset=offset
+        )
+        return result
 
 
 # Singleton instance

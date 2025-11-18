@@ -25,6 +25,7 @@ class ProjectRepository(BaseRepository[Project, ProjectData]):
             "id": project.id,
             "name": project.name,
             "description": project.description,
+            "color": project.color,
             "organization_id": project.organization_id,
             "is_active": project.is_active,
             "created_at": project.created_at,
@@ -35,6 +36,7 @@ class ProjectRepository(BaseRepository[Project, ProjectData]):
         self,
         name: str,
         description: Optional[str],
+        color: str,
         org_id: str
     ) -> ProjectData:
         """
@@ -43,6 +45,7 @@ class ProjectRepository(BaseRepository[Project, ProjectData]):
         Args:
             name: Project name
             description: Project description (optional)
+            color: Project color in hex format
             org_id: Organization UUID
 
         Returns:
@@ -51,6 +54,7 @@ class ProjectRepository(BaseRepository[Project, ProjectData]):
         project = await self.model.create(
             name=name,
             description=description,
+            color=color,
             organization_id=org_id
         )
 
@@ -59,6 +63,7 @@ class ProjectRepository(BaseRepository[Project, ProjectData]):
             "id": project.id,
             "name": project.name,
             "description": project.description,
+            "color": project.color,
             "organization_id": project.organization_id,
             "is_active": project.is_active,
             "created_at": project.created_at,
@@ -96,6 +101,7 @@ class ProjectRepository(BaseRepository[Project, ProjectData]):
             "id": project.id,
             "name": project.name,
             "description": project.description,
+            "color": project.color,
             "organization_id": project.organization_id,
             "is_active": project.is_active,
             "created_at": project.created_at,
@@ -142,6 +148,7 @@ class ProjectRepository(BaseRepository[Project, ProjectData]):
                 "id": p.id,
                 "name": p.name,
                 "description": p.description,
+                "color": p.color,
                 "organization_id": p.organization_id,
                 "is_active": p.is_active,
                 "created_at": p.created_at,

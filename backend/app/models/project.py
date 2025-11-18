@@ -19,6 +19,7 @@ class Project(Model):
     id = fields.UUIDField(primary_key=True)
     name = fields.CharField(max_length=255, null=False)
     description = fields.TextField(null=True)
+    color = fields.CharField(max_length=7, null=False, default="#3b82f6")
     organization: fields.ForeignKeyRelation["Organization"] = fields.ForeignKeyField(
         "models.Organization", related_name="projects", null=False, db_index=True
     )

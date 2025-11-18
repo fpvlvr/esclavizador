@@ -5,12 +5,32 @@ Handles project operations with authorization and multi-tenant enforcement.
 Returns domain entity dicts (ProjectData) from repository layer.
 """
 
+import random
 from typing import Optional
 from fastapi import HTTPException, status
 
 from app.domain.entities import UserData, ProjectData
 from app.schemas.project import ProjectCreate, ProjectUpdate
 from app.repositories.project_repo import project_repo
+
+# Predefined color palette for projects (Material Design colors)
+PROJECT_COLORS = [
+    "#3b82f6",  # Blue
+    "#10b981",  # Green
+    "#f59e0b",  # Amber
+    "#8b5cf6",  # Purple
+    "#ef4444",  # Red
+    "#06b6d4",  # Cyan
+    "#ec4899",  # Pink
+    "#84cc16",  # Lime
+    "#f97316",  # Orange
+    "#6366f1",  # Indigo
+]
+
+
+def generate_project_color() -> str:
+    """Generate random color from predefined palette."""
+    return random.choice(PROJECT_COLORS)
 
 
 class ProjectService:
@@ -33,9 +53,13 @@ class ProjectService:
         """
         org_id = user["organization_id"]
 
+        # Generate color if not provided
+        color = data.color if data.color else generate_project_color()
+
         project_data = await project_repo.create(
             name=data.name,
             description=data.description,
+            color=color,
             org_id=org_id
         )
 

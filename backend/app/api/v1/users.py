@@ -2,10 +2,11 @@
 
 from typing import Annotated, Optional
 from uuid import UUID
+from datetime import date
 from fastapi import APIRouter, Depends, Query, status
 
 from app.domain.entities import UserData
-from app.schemas.user import UserUpdate, UserResponse, UserList, UserCreate
+from app.schemas.user import UserUpdate, UserResponse, UserList, UserCreate, UserStatsList
 from app.services.user_service import user_service
 from app.api.deps import require_boss_role
 
@@ -50,6 +51,34 @@ async def list_users(
         offset=offset
     )
     return UserList(**result)
+
+
+@router.get(
+    "/stats",
+    response_model=UserStatsList,
+    status_code=status.HTTP_200_OK,
+    summary="List users with stats",
+    description="List users with aggregated stats: projects and total time for date range (boss only)"
+)
+async def list_user_stats(
+    current_user: Annotated[UserData, Depends(require_boss_role)],
+    start_date: Optional[date] = Query(None, description="Filter time entries from this date (inclusive)"),
+    end_date: Optional[date] = Query(None, description="Filter time entries until this date (exclusive)"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    role: Optional[str] = Query(None, description="Filter by role (boss/worker)"),
+    limit: int = Query(50, ge=1, le=100, description="Maximum items per page"),
+    offset: int = Query(0, ge=0, description="Number of items to skip")
+) -> UserStatsList:
+    result = await user_service.list_user_stats(
+        current_user=current_user,
+        start_date=start_date,
+        end_date=end_date,
+        is_active=is_active,
+        role=role,
+        limit=limit,
+        offset=offset
+    )
+    return UserStatsList(**result)
 
 
 @router.get(

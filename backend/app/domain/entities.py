@@ -39,6 +39,7 @@ class ProjectData(TypedDict):
     id: UUID
     name: str
     description: Optional[str]
+    color: str
     organization_id: UUID
     is_active: bool
     created_at: datetime

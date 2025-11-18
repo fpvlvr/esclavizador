@@ -1770,6 +1770,146 @@
         }
       }
     },
+    "/api/v1/users/stats": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "List users with stats",
+        "description": "List users with aggregated stats: projects and total time for date range (boss only)",
+        "operationId": "list_user_stats_api_v1_users_stats_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter time entries from this date (inclusive)",
+              "title": "Start Date"
+            },
+            "description": "Filter time entries from this date (inclusive)"
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter time entries until this date (exclusive)",
+              "title": "End Date"
+            },
+            "description": "Filter time entries until this date (exclusive)"
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by active status",
+              "title": "Is Active"
+            },
+            "description": "Filter by active status"
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by role (boss/worker)",
+              "title": "Role"
+            },
+            "description": "Filter by role (boss/worker)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum items per page",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "Maximum items per page"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of items to skip",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Number of items to skip"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserStatsList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users/{user_id}": {
       "get": {
         "tags": [
@@ -1978,6 +2118,19 @@
             ],
             "title": "Description",
             "description": "Project description (optional)"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color",
+            "description": "Project color in hex format (optional, auto-generated if not provided)"
           }
         },
         "type": "object",
@@ -1987,9 +2140,38 @@
         "title": "ProjectCreate",
         "description": "Schema for creating a new project.",
         "example": {
+          "color": "#3b82f6",
           "description": "Complete redesign of company website",
           "name": "Website Redesign"
         }
+      },
+      "ProjectInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id",
+            "description": "Project ID"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Project name"
+          },
+          "color": {
+            "type": "string",
+            "title": "Color",
+            "description": "Project color hex code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "color"
+        ],
+        "title": "ProjectInfo",
+        "description": "Project info for user stats."
       },
       "ProjectList": {
         "properties": {
@@ -2068,6 +2250,11 @@
             "title": "Description",
             "description": "Project description"
           },
+          "color": {
+            "type": "string",
+            "title": "Color",
+            "description": "Project color in hex format"
+          },
           "organization_id": {
             "type": "string",
             "format": "uuid",
@@ -2097,6 +2284,7 @@
           "id",
           "name",
           "description",
+          "color",
           "organization_id",
           "is_active",
           "created_at"
@@ -2104,6 +2292,7 @@
         "title": "ProjectResponse",
         "description": "Schema for project response (used for all endpoints).",
         "example": {
+          "color": "#3b82f6",
           "created_at": "2025-01-15T12:00:00Z",
           "description": "Complete redesign of company website",
           "id": "123e4567-e89b-12d3-a456-426614174000",
@@ -2141,6 +2330,19 @@
             "title": "Description",
             "description": "Project description"
           },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color",
+            "description": "Project color in hex format"
+          },
           "is_active": {
             "anyOf": [
               {
@@ -2158,6 +2360,7 @@
         "title": "ProjectUpdate",
         "description": "Schema for updating an existing project.",
         "example": {
+          "color": "#10b981",
           "description": "Updated description",
           "is_active": true,
           "name": "Website Redesign V2"
@@ -3191,6 +3394,149 @@
         ],
         "title": "UserRole",
         "description": "User role enumeration."
+      },
+      "UserStatsList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UserStatsResponse"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "List of users with stats"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total number of users matching filters"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit",
+            "description": "Maximum items per page"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset",
+            "description": "Number of items skipped"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "UserStatsList",
+        "description": "Paginated user stats list response.",
+        "example": {
+          "items": [
+            {
+              "created_at": "2025-01-09T12:00:00Z",
+              "email": "worker@example.com",
+              "id": "123e4567-e89b-12d3-a456-426614174000",
+              "is_active": true,
+              "organization_id": "123e4567-e89b-12d3-a456-426614174001",
+              "projects": [
+                {
+                  "color": "#3b82f6",
+                  "id": "123e4567-e89b-12d3-a456-426614174002",
+                  "name": "Website Redesign"
+                }
+              ],
+              "role": "worker",
+              "total_time_seconds": 513300
+            }
+          ],
+          "limit": 50,
+          "offset": 0,
+          "total": 1
+        }
+      },
+      "UserStatsResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id",
+            "description": "User unique identifier"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email",
+            "description": "User email address"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole",
+            "description": "User role (boss or worker)"
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Organization Id",
+            "description": "Organization ID"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "Account active status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "Account creation timestamp"
+          },
+          "total_time_seconds": {
+            "type": "integer",
+            "title": "Total Time Seconds",
+            "description": "Total tracked time in seconds for date range"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectInfo"
+            },
+            "type": "array",
+            "title": "Projects",
+            "description": "Projects user has worked on in date range"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "role",
+          "organization_id",
+          "is_active",
+          "created_at",
+          "total_time_seconds",
+          "projects"
+        ],
+        "title": "UserStatsResponse",
+        "description": "User with aggregated stats (projects + time).",
+        "example": {
+          "created_at": "2025-01-09T12:00:00Z",
+          "email": "worker@example.com",
+          "id": "123e4567-e89b-12d3-a456-426614174000",
+          "is_active": true,
+          "organization_id": "123e4567-e89b-12d3-a456-426614174001",
+          "projects": [
+            {
+              "color": "#3b82f6",
+              "id": "123e4567-e89b-12d3-a456-426614174002",
+              "name": "Website Redesign"
+            },
+            {
+              "color": "#f59e0b",
+              "id": "123e4567-e89b-12d3-a456-426614174003",
+              "name": "Mobile App"
+            }
+          ],
+          "role": "worker",
+          "total_time_seconds": 513300
+        }
       },
       "UserUpdate": {
         "properties": {

@@ -131,11 +131,13 @@ class TestListProjects:
         active = await project_repo.create(
             name="Active",
             description=None,
+            color="#3b82f6",
             org_id=test_org["id"]
         )
         inactive = await project_repo.create(
             name="Inactive",
             description=None,
+            color="#10b981",
             org_id=test_org["id"]
         )
         # Soft delete to make inactive
@@ -170,6 +172,7 @@ class TestListProjects:
             p = await project_repo.create(
                 name=f"Project {i}",
                 description=None,
+                color="#f59e0b",
                 org_id=test_org["id"]
             )
             projects.append(p)
@@ -197,6 +200,7 @@ class TestListProjects:
         other_project = await project_repo.create(
             name="Other Org Project",
             description=None,
+            color="#8b5cf6",
             org_id=second_org["id"]
         )
 
@@ -377,6 +381,7 @@ class TestDeleteProject:
         project = await project_repo.create(
             name="To Delete",
             description=None,
+            color="#3b82f6",
             org_id=test_org["id"]
         )
 
