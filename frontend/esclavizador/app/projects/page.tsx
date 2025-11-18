@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { HexColorPicker } from "react-colorful"
 import { ProtectedRoute } from "@/components/protected-route"
 import { Sidebar } from "@/components/sidebar"
 import { ProjectList } from "@/components/project-list"
@@ -27,6 +28,7 @@ export default function ProjectsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [projectName, setProjectName] = useState("")
   const [projectDescription, setProjectDescription] = useState("")
+  const [selectedColor, setSelectedColor] = useState("#3b82f6")
   const [isCreating, setIsCreating] = useState(false)
 
   const isBoss = user?.role === 'boss'
@@ -39,10 +41,12 @@ export default function ProjectsPage() {
       await createProject({
         name: projectName,
         description: projectDescription || null,
+        color: selectedColor,
       })
       setIsDialogOpen(false)
       setProjectName("")
       setProjectDescription("")
+      setSelectedColor("#3b82f6")
     } catch (error) {
       // Error already shown via toast in hook
     } finally {
@@ -95,9 +99,36 @@ export default function ProjectsPage() {
                         rows={4}
                       />
                     </div>
+                    <div className="grid gap-2">
+                      <Label>Color</Label>
+                      <div className="flex gap-4 items-start">
+                        <HexColorPicker color={selectedColor} onChange={setSelectedColor} />
+                        <div className="flex flex-col gap-2">
+                          <div
+                            className="h-16 w-16 rounded-md border border-border"
+                            style={{ backgroundColor: selectedColor }}
+                          />
+                          <Input
+                            value={selectedColor}
+                            onChange={(e) => setSelectedColor(e.target.value)}
+                            placeholder="#000000"
+                            className="w-28 text-xs font-mono"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isCreating}>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsDialogOpen(false)
+                        setProjectName("")
+                        setProjectDescription("")
+                        setSelectedColor("#3b82f6")
+                      }}
+                      disabled={isCreating}
+                    >
                       Cancel
                     </Button>
                     <Button onClick={handleAddProject} disabled={isCreating || !projectName.trim()}>

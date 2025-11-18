@@ -274,7 +274,10 @@ export function ProjectList({ projects, loading, onDeleteProject }: ProjectListP
                   )}
                 </div>
 
-                <div className="w-1 h-12 rounded-full bg-chart-1" />
+                <div
+                  className="w-1 h-12 rounded-full"
+                  style={{ backgroundColor: project.color }}
+                />
 
                 <div className="flex-1">
                   <h3 className="text-xl font-semibold">{project.name}</h3>

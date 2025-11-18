@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Clock, FolderKanban, Settings, Menu, X, Timer, LogOut, ChevronUp, Users } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import {
@@ -15,7 +16,7 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
 
 const navigation = [
-  { name: "Timer", href: "/", icon: Timer, active: true },
+  { name: "Timer", href: "/", icon: Timer },
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Reports", href: "/reports", icon: Clock },
   { name: "Bosses & Workers", href: "/users", icon: Users },
@@ -24,6 +25,7 @@ const navigation = [
 
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
+  const pathname = usePathname()
   const { user, logout } = useAuth()
 
   const handleLogout = async () => {
@@ -67,21 +69,24 @@ export function Sidebar() {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                  item.active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.name}
-              </Link>
-            ))}
+            {navigation.map((item) => {
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  {item.name}
+                </Link>
+              )
+            })}
           </nav>
 
           {/* User section */}
