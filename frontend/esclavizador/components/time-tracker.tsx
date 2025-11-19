@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Play, Square, AlertCircle } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/hooks/use-auth"
@@ -19,6 +20,7 @@ export function TimeTracker() {
 
   const [selectedProject, setSelectedProject] = useState("")
   const [selectedTask, setSelectedTask] = useState("")
+  const [description, setDescription] = useState("")
   
   // Use running entry's project if timer is running, otherwise use selected project
   const projectForTasks = runningEntry?.project_id || selectedProject
@@ -49,6 +51,7 @@ export function TimeTracker() {
       await startTimer({
         project_id: selectedProject,
         task_id: selectedTask,
+        description: description || null,
         is_billable: false,
       })
     } catch (err) {
@@ -59,6 +62,7 @@ export function TimeTracker() {
   const handleStop = async () => {
     try {
       await stopTimer()
+      setDescription("")
       setSelectedTask("")
       setSelectedProject("")
     } catch (err) {
@@ -72,6 +76,7 @@ export function TimeTracker() {
         <CardContent className="px-6 py-4">
           <div className="flex flex-col md:flex-row items-center gap-3">
             <Skeleton className="h-12 w-32" />
+            <Skeleton className="h-10 flex-1" />
             <Skeleton className="h-10 w-52" />
             <Skeleton className="h-10 w-64" />
             <Skeleton className="h-10 w-24" />
@@ -96,6 +101,14 @@ export function TimeTracker() {
         ) : (
           <div className="flex flex-col md:flex-row items-center gap-3">
             <div className="text-4xl font-mono font-bold tabular-nums">{formatTime(elapsedSeconds)}</div>
+            <Input
+              placeholder="What are you up to? (100 characters)"
+              value={isRunning ? (runningEntry?.description ?? "") : description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={100}
+              className="flex-1"
+              disabled={isRunning}
+            />
             <Select
               value={isRunning ? runningEntry?.project_id : selectedProject}
               onValueChange={setSelectedProject}

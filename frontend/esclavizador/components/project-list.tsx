@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { HexColorPicker } from "react-colorful"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -17,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ChevronDown, ChevronRight, Clock, Plus, FolderKanban, Users, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Clock, Plus, FolderKanban, Users, Trash2, Pencil } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { EmptyState } from "@/components/empty-state"
@@ -29,6 +30,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 interface ProjectListProps {
   projects: ProjectResponse[]
   loading: boolean
+  onUpdateProject?: (projectId: string, data: { name: string; description?: string | null; color?: string | null }) => Promise<void>
   onDeleteProject?: (projectId: string) => Promise<void>
 }
 
@@ -39,7 +41,7 @@ interface ProjectTasksState {
   }
 }
 
-export function ProjectList({ projects, loading, onDeleteProject }: ProjectListProps) {
+export function ProjectList({ projects, loading, onUpdateProject, onDeleteProject }: ProjectListProps) {
   const { user } = useAuth()
   const { createTask, deleteTask } = useTasks()
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
@@ -55,6 +57,14 @@ export function ProjectList({ projects, loading, onDeleteProject }: ProjectListP
   const [deleteTaskDialogOpen, setDeleteTaskDialogOpen] = useState(false)
   const [taskToDelete, setTaskToDelete] = useState<{ taskId: string; projectId: string } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  
+  // Edit project states
+  const [editProjectDialogOpen, setEditProjectDialogOpen] = useState(false)
+  const [projectToEdit, setProjectToEdit] = useState<ProjectResponse | null>(null)
+  const [editProjectName, setEditProjectName] = useState("")
+  const [editProjectDescription, setEditProjectDescription] = useState("")
+  const [editProjectColor, setEditProjectColor] = useState("#3b82f6")
+  const [isUpdating, setIsUpdating] = useState(false)
 
   const isBoss = user?.role === 'boss'
 
@@ -207,6 +217,33 @@ export function ProjectList({ projects, loading, onDeleteProject }: ProjectListP
     }
   }
 
+  const handleEditProjectClick = (project: ProjectResponse) => {
+    setProjectToEdit(project)
+    setEditProjectName(project.name)
+    setEditProjectDescription(project.description || "")
+    setEditProjectColor(project.color || "#3b82f6")
+    setEditProjectDialogOpen(true)
+  }
+
+  const handleUpdateProject = async () => {
+    if (!projectToEdit || !onUpdateProject || !editProjectName.trim()) return
+
+    setIsUpdating(true)
+    try {
+      await onUpdateProject(projectToEdit.id, {
+        name: editProjectName,
+        description: editProjectDescription || null,
+        color: editProjectColor,
+      })
+      setEditProjectDialogOpen(false)
+      setProjectToEdit(null)
+    } catch (error) {
+      // Error already shown via toast
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
   // Show loading skeleton
   if (loading) {
     return (
@@ -286,7 +323,7 @@ export function ProjectList({ projects, loading, onDeleteProject }: ProjectListP
                   )}
                 </div>
 
-                {/* Task count and delete button */}
+                {/* Task count and action buttons */}
                 <div className="flex items-center gap-3">
                   {isExpanded && (
                     <div className="text-sm text-muted-foreground">
@@ -294,17 +331,32 @@ export function ProjectList({ projects, loading, onDeleteProject }: ProjectListP
                     </div>
                   )}
                   {isBoss && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteProjectClick(project.id)
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEditProjectClick(project)
+                        }}
+                        title="Edit project"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteProjectClick(project.id)
+                        }}
+                        title="Delete project"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
@@ -463,6 +515,72 @@ export function ProjectList({ projects, loading, onDeleteProject }: ProjectListP
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Project Dialog */}
+      <Dialog open={editProjectDialogOpen} onOpenChange={setEditProjectDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Project</DialogTitle>
+            <DialogDescription>
+              Update project details, description, and color.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-project-name">Name</Label>
+              <Input
+                id="edit-project-name"
+                placeholder="Enter project name"
+                value={editProjectName}
+                onChange={(e) => setEditProjectName(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-project-description">Description</Label>
+              <Textarea
+                id="edit-project-description"
+                placeholder="Enter project description"
+                value={editProjectDescription}
+                onChange={(e) => setEditProjectDescription(e.target.value)}
+                rows={4}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Color</Label>
+              <div className="flex gap-4 items-start">
+                <HexColorPicker color={editProjectColor} onChange={setEditProjectColor} />
+                <div className="flex flex-col gap-2">
+                  <div
+                    className="h-16 w-16 rounded-md border border-border"
+                    style={{ backgroundColor: editProjectColor }}
+                  />
+                  <Input
+                    value={editProjectColor}
+                    onChange={(e) => setEditProjectColor(e.target.value)}
+                    placeholder="#000000"
+                    className="w-28 text-xs font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditProjectDialogOpen(false)
+                setProjectToEdit(null)
+              }}
+              disabled={isUpdating}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateProject} disabled={isUpdating || !editProjectName.trim()}>
+              {isUpdating ? "Updating..." : "Update Project"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
