@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { ProtectedRoute } from "@/components/protected-route"
 import { Sidebar } from "@/components/sidebar"
 import { Card } from "@/components/ui/card"
@@ -19,9 +19,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 import { CalendarIcon, Download, Search, ArrowUpDown } from 'lucide-react'
-import { cn } from "@/lib/utils"
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subDays, subWeeks, subMonths, startOfYear } from "date-fns"
 import {
   Table,
@@ -31,16 +30,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useReports } from "@/hooks/use-reports"
+import { useProjects } from "@/hooks/use-projects"
 
-// Mock data for projects
-const projectsData = [
-  { name: "Website Redesign", hours: 42.5, billableHours: 42.5, color: "#3b82f6" },
-  { name: "Mobile App Development", hours: 68.25, billableHours: 68.25, color: "#f59e0b" },
-  { name: "API Integration", hours: 28.75, billableHours: 28.75, color: "#10b981" },
-  { name: "Marketing Campaign", hours: 15.33, billableHours: 15.33, color: "#ef4444" },
-]
-
-const tags = ["Frontend", "Backend", "Design", "Marketing", "DevOps"]
+// Convert Date to YYYY-MM-DD format for API
+const formatDateForAPI = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 type DateRange = {
   from: Date
@@ -51,7 +51,6 @@ type PresetType = "today" | "yesterday" | "currentWeek" | "lastWeek" | "currentM
 
 export default function ReportsPage() {
   const [selectedProject, setSelectedProject] = useState<string>("all")
-  const [selectedTag, setSelectedTag] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [dateRange, setDateRange] = useState<DateRange>({
     from: startOfMonth(subMonths(new Date(), 1)),
@@ -60,20 +59,62 @@ export default function ReportsPage() {
   const [selectedPreset, setSelectedPreset] = useState<PresetType>("lastMonth")
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
 
-  const totalHours = projectsData.reduce((sum, project) => sum + project.hours, 0)
-  const totalBillableHours = projectsData.reduce((sum, project) => sum + project.billableHours, 0)
+  // Fetch projects for colors and filtering
+  const { projects, loading: projectsLoading } = useProjects()
 
-  const pieChartData = projectsData.map((project) => ({
-    name: project.name,
-    value: project.hours,
-    percentage: ((project.hours / totalHours) * 100).toFixed(0),
-  }))
-
-  const filteredProjects = projectsData.filter((project) => {
-    const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesProject = selectedProject === "all" || project.name === selectedProject
-    return matchesSearch && matchesProject
+  // Fetch aggregated data with date range filtering
+  const { aggregates, loading: aggregatesLoading, refetch } = useReports({
+    start_date: formatDateForAPI(dateRange.from),
+    end_date: formatDateForAPI(dateRange.to),
   })
+
+  // Refetch when date range changes
+  useEffect(() => {
+    refetch()
+  }, [dateRange.from, dateRange.to, refetch])
+
+  // Enrich aggregates with project colors
+  const enrichedAggregates = useMemo(() => {
+    return aggregates.map(agg => {
+      const project = projects.find(p => p.id === agg.project_id)
+      return {
+        ...agg,
+        color: project?.color || "#3b82f6",
+      }
+    })
+  }, [aggregates, projects])
+
+  // Calculate totals
+  const totalHours = useMemo(() => {
+    return enrichedAggregates.reduce((sum, project) => sum + project.total_hours, 0)
+  }, [enrichedAggregates])
+
+  const totalBillableHours = useMemo(() => {
+    return enrichedAggregates.reduce((sum, project) => sum + project.billable_hours, 0)
+  }, [enrichedAggregates])
+
+  const billablePercentage = useMemo(() => {
+    if (totalHours === 0) return 0
+    return Math.round((totalBillableHours / totalHours) * 100)
+  }, [totalHours, totalBillableHours])
+
+  // Prepare pie chart data
+  const pieChartData = useMemo(() => {
+    return enrichedAggregates.map(project => ({
+      name: project.project_name,
+      value: project.total_hours,
+      percentage: totalHours > 0 ? ((project.total_hours / totalHours) * 100).toFixed(0) : "0",
+    }))
+  }, [enrichedAggregates, totalHours])
+
+  // Filter projects by search and selection
+  const filteredProjects = useMemo(() => {
+    return enrichedAggregates.filter(project => {
+      const matchesSearch = project.project_name.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesProject = selectedProject === "all" || project.project_id === selectedProject
+      return matchesSearch && matchesProject
+    })
+  }, [enrichedAggregates, searchQuery, selectedProject])
 
   const handlePresetSelect = (preset: PresetType) => {
     setSelectedPreset(preset)
@@ -122,9 +163,9 @@ export default function ReportsPage() {
 
   const exportToCSV = () => {
     const headers = ["Project", "Hours", "Billable Hours"]
-    const rows = filteredProjects.map((p) => [p.name, p.hours.toFixed(2), p.billableHours.toFixed(2)])
+    const rows = filteredProjects.map((p) => [p.project_name, p.total_hours.toFixed(2), p.billable_hours.toFixed(2)])
     const csv = [headers, ...rows].map((row) => row.join(",")).join("\n")
-    
+
     const blob = new Blob([csv], { type: "text/csv" })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement("a")
@@ -260,29 +301,21 @@ export default function ReportsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Projects: All</SelectItem>
-                {projectsData.map((project) => (
-                  <SelectItem key={project.name} value={project.name}>
-                    {project.name}
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: project.color }}
+                      />
+                      {project.name}
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
-            <Select value={selectedTag} onValueChange={setSelectedTag}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Tag: All" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tag: All</SelectItem>
-                {tags.map((tag) => (
-                  <SelectItem key={tag} value={tag}>
-                    {tag}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Button variant="outline" onClick={() => { setSelectedProject("all"); setSelectedTag("all") }}>
+            <Button variant="outline" onClick={() => { setSelectedProject("all"); setSearchQuery("") }}>
               Clear Filter
             </Button>
           </div>
@@ -300,46 +333,72 @@ export default function ReportsPage() {
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Billable</p>
                     <p className="text-2xl font-semibold">
-                      {totalBillableHours.toFixed(2)} h - 100%
+                      {totalBillableHours.toFixed(2)} h - {billablePercentage}%
                     </p>
                   </div>
                 </div>
 
                 {/* Legend */}
-                <div className="space-y-2">
-                  {pieChartData.map((entry, index) => (
-                    <div key={index} className="flex items-center gap-3">
-                      <div
-                        className="w-4 h-4 rounded"
-                        style={{ backgroundColor: projectsData[index].color }}
-                      />
-                      <span className="text-sm flex-1">{entry.name}</span>
-                      <span className="text-sm font-medium">{entry.percentage}%</span>
-                    </div>
-                  ))}
-                </div>
+                {aggregatesLoading || projectsLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="flex items-center gap-3 animate-pulse">
+                        <div className="w-4 h-4 bg-muted rounded"></div>
+                        <div className="flex-1 h-4 bg-muted rounded"></div>
+                        <div className="w-8 h-4 bg-muted rounded"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {pieChartData.map((entry, index) => {
+                      const project = enrichedAggregates.find(p => p.project_name === entry.name)
+                      return (
+                        <div key={index} className="flex items-center gap-3">
+                          <div
+                            className="w-4 h-4 rounded"
+                            style={{ backgroundColor: project?.color || "#3b82f6" }}
+                          />
+                          <span className="text-sm flex-1">{entry.name}</span>
+                          <span className="text-sm font-medium">{entry.percentage}%</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Right: Pie Chart */}
               <div className="flex items-center justify-center">
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={pieChartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={120}
-                      dataKey="value"
-                      label={({ percentage }) => `${percentage}%`}
-                    >
-                      {pieChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={projectsData[index].color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                {aggregatesLoading || projectsLoading ? (
+                  <Skeleton className="w-full h-[300px]" />
+                ) : pieChartData.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-12">
+                    <p>No data for selected period</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={pieChartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={120}
+                        dataKey="value"
+                        label={({ percentage }) => `${percentage}%`}
+                      >
+                        {pieChartData.map((entry, index) => {
+                          const project = enrichedAggregates.find(p => p.project_name === entry.name)
+                          return (
+                            <Cell key={`cell-${index}`} fill={project?.color || "#3b82f6"} />
+                          )
+                        })}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </div>
           </Card>
@@ -390,27 +449,52 @@ export default function ReportsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProjects.map((project, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-8 h-8 rounded flex items-center justify-center text-white text-sm font-medium"
-                            style={{ backgroundColor: project.color }}
-                          >
-                            {project.name.charAt(0)}
+                  {aggregatesLoading || projectsLoading ? (
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <TableRow key={index}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Skeleton className="w-8 h-8 rounded"></Skeleton>
+                            <Skeleton className="h-4 w-32"></Skeleton>
                           </div>
-                          <span className="font-medium">{project.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right text-primary font-medium">
-                        {project.hours.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right text-primary font-medium">
-                        {project.billableHours.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Skeleton className="h-4 w-16 ml-auto"></Skeleton>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Skeleton className="h-4 w-16 ml-auto"></Skeleton>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : filteredProjects.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                        No data for selected period
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    filteredProjects.map((project) => (
+                      <TableRow key={project.project_id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-8 h-8 rounded flex items-center justify-center text-white text-sm font-medium"
+                              style={{ backgroundColor: project.color }}
+                            >
+                              {project.project_name.charAt(0)}
+                            </div>
+                            <span className="font-medium">{project.project_name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right text-primary font-medium">
+                          {project.total_hours.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right text-primary font-medium">
+                          {project.billable_hours.toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
