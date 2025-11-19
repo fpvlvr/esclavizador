@@ -1,14 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Play, Square, AlertCircle } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/hooks/use-auth"
 import { useProjects } from "@/hooks/use-projects"
+import { useTasks } from "@/hooks/use-tasks"
 import { useTimer } from "@/hooks/use-timer"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -17,12 +17,13 @@ export function TimeTracker() {
   const { projects, loading: projectsLoading } = useProjects()
   const { runningEntry, elapsedSeconds, isRunning, loading: timerLoading, startTimer, stopTimer } = useTimer()
 
-  const [description, setDescription] = useState("")
   const [selectedProject, setSelectedProject] = useState("")
+  const [selectedTask, setSelectedTask] = useState("")
+  const { tasks, loading: tasksLoading } = useTasks(selectedProject)
 
   const isBoss = user?.role === 'boss'
   const hasNoProjects = projects.length === 0
-  const loading = projectsLoading || timerLoading
+  const loading = projectsLoading || timerLoading || tasksLoading
 
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600)
@@ -31,13 +32,20 @@ export function TimeTracker() {
     return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
+  // Reset task selection when project changes
+  useEffect(() => {
+    if (!isRunning) {
+      setSelectedTask("")
+    }
+  }, [selectedProject, isRunning])
+
   const handleStart = async () => {
-    if (!selectedProject) return
+    if (!selectedProject || !selectedTask) return
 
     try {
       await startTimer({
         project_id: selectedProject,
-        description: description || null,
+        task_id: selectedTask,
         is_billable: false,
       })
     } catch (err) {
@@ -48,7 +56,7 @@ export function TimeTracker() {
   const handleStop = async () => {
     try {
       await stopTimer()
-      setDescription("")
+      setSelectedTask("")
       setSelectedProject("")
     } catch (err) {
       console.error('Failed to stop timer:', err)
@@ -61,8 +69,8 @@ export function TimeTracker() {
         <CardContent className="px-6 py-4">
           <div className="flex flex-col md:flex-row items-center gap-3">
             <Skeleton className="h-12 w-32" />
-            <Skeleton className="h-10 flex-1" />
             <Skeleton className="h-10 w-52" />
+            <Skeleton className="h-10 w-64" />
             <Skeleton className="h-10 w-24" />
           </div>
         </CardContent>
@@ -85,13 +93,6 @@ export function TimeTracker() {
         ) : (
           <div className="flex flex-col md:flex-row items-center gap-3">
             <div className="text-4xl font-mono font-bold tabular-nums">{formatTime(elapsedSeconds)}</div>
-            <Input
-              placeholder="What are you working on?"
-              value={isRunning ? (runningEntry?.description ?? "") : description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="flex-1"
-              disabled={isRunning}
-            />
             <Select
               value={isRunning ? runningEntry?.project_id : selectedProject}
               onValueChange={setSelectedProject}
@@ -114,6 +115,28 @@ export function TimeTracker() {
                 ))}
               </SelectContent>
             </Select>
+            <Select
+              value={isRunning ? runningEntry?.task_id ?? "" : selectedTask}
+              onValueChange={setSelectedTask}
+              disabled={isRunning || !selectedProject}
+            >
+              <SelectTrigger className="w-full md:w-64">
+                <SelectValue placeholder="Select task" />
+              </SelectTrigger>
+              <SelectContent>
+                {tasks.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                    No tasks available
+                  </div>
+                ) : (
+                  tasks.map((task) => (
+                    <SelectItem key={task.id} value={task.id}>
+                      {task.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
             <div className="flex items-center gap-2">
               {isRunning ? (
                 <Button size="lg" variant="outline" onClick={handleStop}>
@@ -124,7 +147,7 @@ export function TimeTracker() {
                 <Button
                   size="lg"
                   onClick={handleStart}
-                  disabled={!selectedProject}
+                  disabled={!selectedProject || !selectedTask}
                 >
                   <Play className="h-5 w-5 mr-2" />
                   Start
