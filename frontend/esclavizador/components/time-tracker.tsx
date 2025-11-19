@@ -19,7 +19,10 @@ export function TimeTracker() {
 
   const [selectedProject, setSelectedProject] = useState("")
   const [selectedTask, setSelectedTask] = useState("")
-  const { tasks, loading: tasksLoading } = useTasks(selectedProject)
+  
+  // Use running entry's project if timer is running, otherwise use selected project
+  const projectForTasks = runningEntry?.project_id || selectedProject
+  const { tasks, loading: tasksLoading } = useTasks(projectForTasks)
 
   const isBoss = user?.role === 'boss'
   const hasNoProjects = projects.length === 0
