@@ -2055,6 +2055,102 @@
           }
         }
       }
+    },
+    "/api/v1/reports/projects": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Get project aggregates",
+        "description": "Get time entries aggregated by project for reports (boss only)",
+        "operationId": "get_project_aggregates_api_v1_reports_projects_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by start date (entries >= this date)",
+              "title": "Start Date"
+            },
+            "description": "Filter by start date (entries >= this date)"
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by end date (entries <= this date)",
+              "title": "End Date"
+            },
+            "description": "Filter by end date (entries <= this date)"
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by user ID",
+              "title": "User Id"
+            },
+            "description": "Filter by user ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectAggregateList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2096,6 +2192,80 @@
         "example": {
           "email": "user@example.com",
           "password": "SecurePass123!"
+        }
+      },
+      "ProjectAggregate": {
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Project Id",
+            "description": "Project unique identifier"
+          },
+          "project_name": {
+            "type": "string",
+            "title": "Project Name",
+            "description": "Project name"
+          },
+          "total_hours": {
+            "type": "number",
+            "title": "Total Hours",
+            "description": "Total tracked hours for this project"
+          },
+          "billable_hours": {
+            "type": "number",
+            "title": "Billable Hours",
+            "description": "Billable tracked hours for this project"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id",
+          "project_name",
+          "total_hours",
+          "billable_hours"
+        ],
+        "title": "ProjectAggregate",
+        "description": "Schema for project time aggregation (used in reports).",
+        "example": {
+          "billable_hours": 40.0,
+          "project_id": "123e4567-e89b-12d3-a456-426614174000",
+          "project_name": "Website Redesign",
+          "total_hours": 42.5
+        }
+      },
+      "ProjectAggregateList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectAggregate"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "List of project aggregates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ProjectAggregateList",
+        "description": "Schema for project aggregates list response.",
+        "example": {
+          "items": [
+            {
+              "billable_hours": 40.0,
+              "project_id": "123e4567-e89b-12d3-a456-426614174000",
+              "project_name": "Website Redesign",
+              "total_hours": 42.5
+            },
+            {
+              "billable_hours": 28.75,
+              "project_id": "123e4567-e89b-12d3-a456-426614174001",
+              "project_name": "Mobile App",
+              "total_hours": 28.75
+            }
+          ]
         }
       },
       "ProjectCreate": {

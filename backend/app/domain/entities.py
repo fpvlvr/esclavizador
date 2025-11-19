@@ -94,3 +94,12 @@ class TimeEntryData(TypedDict):
     task_name: Optional[str]  # Extracted from task.name if task exists
     duration_seconds: Optional[int]  # Computed: (end_time - start_time).total_seconds()
     tags: list["TagData"]  # Extracted from prefetched tags relation
+
+
+class ProjectAggregateData(TypedDict):
+    """Aggregated time tracking data grouped by project."""
+
+    project_id: UUID
+    project_name: str
+    total_seconds: int  # Sum of all duration_seconds for the project
+    billable_seconds: int  # Sum of duration_seconds where is_billable=True

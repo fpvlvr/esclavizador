@@ -10,7 +10,7 @@ from uuid import UUID
 from datetime import datetime, date, timezone
 from fastapi import HTTPException, status
 
-from app.domain.entities import UserData, TimeEntryData
+from app.domain.entities import UserData, TimeEntryData, ProjectAggregateData
 from app.schemas.time_entry import TimeEntryStart, TimeEntryCreate, TimeEntryUpdate
 from app.repositories.time_entry_repo import time_entry_repo
 from app.repositories.project_repo import project_repo
@@ -537,6 +537,66 @@ class TimeTrackingService:
             )
 
         return True
+
+    async def get_project_aggregates(
+        self,
+        user: UserData,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        user_id: Optional[str] = None
+    ) -> list[dict]:
+        """
+        Get time entries aggregated by project (boss only).
+
+        Args:
+            user: Authenticated boss user
+            start_date: Optional start date filter (entries >= this date)
+            end_date: Optional end date filter (entries <= this date)
+            user_id: Optional user ID filter
+
+        Returns:
+            List of dicts with project_id, project_name, total_hours, billable_hours
+
+        Raises:
+            HTTPException(404): User filter specified but user not found
+        """
+        org_id = user["organization_id"]
+        filter_user_id = None
+
+        # Bosses can filter by user_id
+        if user_id:
+            # Validate user exists and belongs to same org
+            filter_user = await user_repo.get_by_id(user_id)
+            if not filter_user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+            if filter_user["organization_id"] != org_id:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+            filter_user_id = user_id
+
+        # Get aggregates from repository (returns seconds)
+        aggregates: list[ProjectAggregateData] = await time_entry_repo.aggregate_by_project(
+            org_id=org_id,
+            user_id=filter_user_id,
+            start_date=start_date,
+            end_date=end_date
+        )
+
+        # Convert to API format (seconds -> hours)
+        return [
+            {
+                "project_id": agg["project_id"],
+                "project_name": agg["project_name"],
+                "total_hours": round(agg["total_seconds"] / 3600.0, 2),
+                "billable_hours": round(agg["billable_seconds"] / 3600.0, 2),
+            }
+            for agg in aggregates
+        ]
 
 
 # Singleton instance

@@ -7,13 +7,13 @@ Returns TypedDict entities for ORM independence.
 
 from typing import Optional
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, date
 from tortoise.queryset import Q
 
 from app.models.time_entry import TimeEntry
 from app.models.tag import Tag
 from app.repositories.base import BaseRepository
-from app.domain.entities import TimeEntryData, TagData
+from app.domain.entities import TimeEntryData, TagData, ProjectAggregateData
 
 
 class TimeEntryRepository(BaseRepository[TimeEntry, TimeEntryData]):
@@ -319,6 +319,97 @@ class TimeEntryRepository(BaseRepository[TimeEntry, TimeEntryData]):
 
         await entry.delete()
         return True
+
+    async def aggregate_by_project(
+        self,
+        org_id: UUID | str,
+        user_id: Optional[str] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None
+    ) -> list[ProjectAggregateData]:
+        """
+        Aggregate time entries by project.
+
+        Groups completed time entries by project and calculates:
+        - total_seconds: Sum of all duration_seconds for the project
+        - billable_seconds: Sum of duration_seconds where is_billable=True
+
+        Args:
+            org_id: Organization UUID
+            user_id: Optional user ID filter (for workers seeing only their entries)
+            start_date: Optional start date filter (entries >= this date)
+            end_date: Optional end date filter (entries <= this date)
+
+        Returns:
+            List of ProjectAggregateData dicts
+        """
+        # Build base query - only completed entries
+        query = self.model.filter(
+            organization_id=org_id,
+            is_running=False
+        )
+
+        # Apply filters
+        if user_id:
+            query = query.filter(user_id=user_id)
+
+        if start_date:
+            start_dt = datetime.combine(start_date, datetime.min.time())
+            query = query.filter(start_time__gte=start_dt)
+
+        if end_date:
+            end_dt = datetime.combine(end_date, datetime.max.time())
+            query = query.filter(start_time__lte=end_dt)
+
+        # Fetch entries with project relation
+        entries = await query.prefetch_related('project').all()
+
+        # Aggregate by project
+        project_aggregates: dict[str, ProjectAggregateData] = {}
+
+        for entry in entries:
+            # Skip entries without end_time (shouldn't happen for is_running=False, but safety check)
+            if not entry.end_time or not entry.start_time:
+                continue
+
+            # Calculate duration
+            end_time = entry.end_time
+            start_time = entry.start_time
+            # Ensure timezone-aware
+            if end_time.tzinfo is None:
+                from datetime import timezone
+                end_time = end_time.replace(tzinfo=timezone.utc)
+            if start_time.tzinfo is None:
+                from datetime import timezone
+                start_time = start_time.replace(tzinfo=timezone.utc)
+
+            duration_seconds = int((end_time - start_time).total_seconds())
+
+            # Get project info (already prefetched)
+            project_id = entry.project_id  # Keep as UUID
+            project_name = entry.project.name
+            project_id_str = str(project_id)
+
+            # Initialize project aggregate if not exists
+            if project_id_str not in project_aggregates:
+                project_aggregates[project_id_str] = {
+                    'project_id': project_id,
+                    'project_name': project_name,
+                    'total_seconds': 0,
+                    'billable_seconds': 0,
+                }
+
+            # Add to totals
+            project_aggregates[project_id_str]['total_seconds'] += duration_seconds
+            if entry.is_billable:
+                project_aggregates[project_id_str]['billable_seconds'] += duration_seconds
+
+        # Convert to list and sort by total_seconds descending
+        return sorted(
+            list(project_aggregates.values()),
+            key=lambda x: x['total_seconds'],
+            reverse=True
+        )
 
 
 # Singleton instance

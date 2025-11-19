@@ -97,3 +97,50 @@ class TimeEntryList(BaseModel):
     total: int = Field(..., description="Total number of entries matching filters")
     limit: int = Field(..., description="Page size limit")
     offset: int = Field(..., description="Number of items skipped")
+
+
+class ProjectAggregate(BaseModel):
+    """Schema for project time aggregation (used in reports)."""
+
+    project_id: UUID = Field(..., description="Project unique identifier")
+    project_name: str = Field(..., description="Project name")
+    total_hours: float = Field(..., description="Total tracked hours for this project")
+    billable_hours: float = Field(..., description="Billable tracked hours for this project")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "project_id": "123e4567-e89b-12d3-a456-426614174000",
+                "project_name": "Website Redesign",
+                "total_hours": 42.5,
+                "billable_hours": 40.0
+            }
+        }
+    )
+
+
+class ProjectAggregateList(BaseModel):
+    """Schema for project aggregates list response."""
+
+    items: list[ProjectAggregate] = Field(..., description="List of project aggregates")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "items": [
+                    {
+                        "project_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "project_name": "Website Redesign",
+                        "total_hours": 42.5,
+                        "billable_hours": 40.0
+                    },
+                    {
+                        "project_id": "123e4567-e89b-12d3-a456-426614174001",
+                        "project_name": "Mobile App",
+                        "total_hours": 28.75,
+                        "billable_hours": 28.75
+                    }
+                ]
+            }
+        }
+    )
