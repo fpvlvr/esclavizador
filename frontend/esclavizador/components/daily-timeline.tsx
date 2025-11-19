@@ -44,6 +44,16 @@ export function DailyTimeline() {
     limit: 100,
   })
 
+  // Refetch entries when timer is stopped
+  useEffect(() => {
+    const handleTimerStopped = () => {
+      refetch()
+    }
+
+    window.addEventListener('timerStopped', handleTimerStopped)
+    return () => window.removeEventListener('timerStopped', handleTimerStopped)
+  }, [refetch])
+
   const { projects } = useProjects()
 
   // Map project colors

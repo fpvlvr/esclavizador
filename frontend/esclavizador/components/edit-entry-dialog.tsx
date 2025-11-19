@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Clock, Trash2 } from "lucide-react"
+import { Trash2 } from "lucide-react"
 import { useProjects } from "@/hooks/use-projects"
 import { useTasks } from "@/hooks/use-tasks"
 import { useTimeEntries } from "@/hooks/use-time-entries"
@@ -81,19 +81,6 @@ export function EditEntryDialog({ open, onOpenChange, onSuccess, entry }: EditEn
 
     return `${hours} h ${String(minutes).padStart(2, '0')} min`
   }, [startTime, endTime])
-
-  const setToNow = (field: 'start' | 'end') => {
-    const now = new Date()
-    const hours = String(now.getHours()).padStart(2, '0')
-    const minutes = String(now.getMinutes()).padStart(2, '0')
-    const timeStr = `${hours}:${minutes}`
-
-    if (field === 'start') {
-      setStartTime(timeStr)
-    } else {
-      setEndTime(timeStr)
-    }
-  }
 
   const handleSave = async () => {
     if (!entry) return
@@ -199,45 +186,23 @@ export function EditEntryDialog({ open, onOpenChange, onSuccess, entry }: EditEn
             {/* Start Time */}
             <div className="space-y-2">
               <Label htmlFor="start-time">Start Time</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="start-time"
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setToNow('start')}
-                  title="Set to now"
-                >
-                  <Clock className="h-4 w-4" />
-                </Button>
-              </div>
+              <Input
+                id="start-time"
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
             </div>
 
             {/* End Time */}
             <div className="space-y-2">
               <Label htmlFor="end-time">End Time</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="end-time"
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setToNow('end')}
-                  title="Set to now"
-                >
-                  <Clock className="h-4 w-4" />
-                </Button>
-              </div>
+              <Input
+                id="end-time"
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+              />
             </div>
 
             {/* Duration */}

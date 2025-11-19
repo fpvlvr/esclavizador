@@ -6,7 +6,7 @@ import {
   updateTimeEntryApiV1TimeEntriesEntryIdPut,
   deleteTimeEntryApiV1TimeEntriesEntryIdDelete,
 } from '@/lib/api/generated'
-import { getAuthHeaders } from '@/lib/api/client'
+import { getAuthHeaders, extractApiErrorMessage } from '@/lib/api/client'
 import type { TimeEntryResponse, TimeEntryCreate, TimeEntryUpdate } from '@/lib/api/generated'
 
 interface TimeEntriesFilters {
@@ -92,7 +92,8 @@ export function useTimeEntries(initialFilters?: TimeEntriesFilters): UseTimeEntr
       })
 
       if (apiError || !newEntry) {
-        throw new Error('Failed to create time entry')
+        const errorMessage = extractApiErrorMessage(apiError, 'Failed to create time entry')
+        throw new Error(errorMessage)
       }
 
       toast.success('Time entry created successfully')
@@ -117,7 +118,8 @@ export function useTimeEntries(initialFilters?: TimeEntriesFilters): UseTimeEntr
       })
 
       if (apiError || !updatedEntry) {
-        throw new Error('Failed to update time entry')
+        const errorMessage = extractApiErrorMessage(apiError, 'Failed to update time entry')
+        throw new Error(errorMessage)
       }
 
       toast.success('Time entry updated successfully')
@@ -141,7 +143,8 @@ export function useTimeEntries(initialFilters?: TimeEntriesFilters): UseTimeEntr
       })
 
       if (apiError) {
-        throw new Error('Failed to delete time entry')
+        const errorMessage = extractApiErrorMessage(apiError, 'Failed to delete time entry')
+        throw new Error(errorMessage)
       }
 
       toast.success('Time entry deleted successfully')

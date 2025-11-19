@@ -131,6 +131,9 @@ export function useTimer(): UseTimerReturn {
       // Clear localStorage
       localStorage.removeItem(STORAGE_KEY)
 
+      // Dispatch event to notify other components
+      window.dispatchEvent(new CustomEvent('timerStopped'))
+
       toast.success(`Timer stopped - ${formatDuration(stoppedEntry.duration_seconds ?? 0)}`)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to stop timer'

@@ -135,4 +135,9 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Make time picker icon visible in dark mode */
+  .dark input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
 }
