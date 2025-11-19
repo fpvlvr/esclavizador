@@ -40,6 +40,7 @@ export default function UsersPage() {
     password: "",
     role: "worker" as "worker" | "boss",
   })
+  const [editPassword, setEditPassword] = useState("")
   const [isActive, setIsActive] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -51,6 +52,7 @@ export default function UsersPage() {
       password: "",
       role: "worker",
     })
+    setEditPassword("")
     setIsActive(true)
   }
 
@@ -80,10 +82,17 @@ export default function UsersPage() {
     setIsSubmitting(true)
 
     try {
-      await updateUser(selectedUser.id, {
+      const updateData: { role?: "worker" | "boss"; is_active?: boolean; password?: string } = {
         role: formData.role,
         is_active: isActive,
-      })
+      }
+      
+      // Only include password if it's provided and user is a worker
+      if (editPassword.trim() && selectedUser.role === "worker") {
+        updateData.password = editPassword
+      }
+
+      await updateUser(selectedUser.id, updateData)
       setIsEditDialogOpen(false)
       setSelectedUser(null)
       resetForm()
@@ -101,6 +110,7 @@ export default function UsersPage() {
       password: "",
       role: user.role,
     })
+    setEditPassword("")
     setIsActive(user.is_active)
     setIsEditDialogOpen(true)
   }
@@ -219,30 +229,21 @@ export default function UsersPage() {
                   <DialogHeader>
                     <DialogTitle>Edit User</DialogTitle>
                     <DialogDescription>
-                      Update the role and status for this team member
+                      Update the role, status, and password for this team member. Password can only be updated for workers.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label htmlFor="edit-email">Email</Label>
-                      <Input
-                        id="edit-email"
-                        type="email"
-                        value={formData.email}
-                        disabled
-                        className="bg-muted"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Email cannot be changed
-                      </p>
-                    </div>
-                    <div className="space-y-2">
                       <Label htmlFor="edit-role">Role</Label>
                       <Select
                         value={formData.role}
-                        onValueChange={(value: "worker" | "boss") =>
+                        onValueChange={(value: "worker" | "boss") => {
                           setFormData({ ...formData, role: value })
-                        }
+                          // Clear password if changing to boss
+                          if (value === "boss") {
+                            setEditPassword("")
+                          }
+                        }}
                         disabled={isSubmitting}
                       >
                         <SelectTrigger id="edit-role">
@@ -270,6 +271,27 @@ export default function UsersPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {selectedUser && formData.role === "worker" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-password">New Password (optional)</Label>
+                        <Input
+                          id="edit-password"
+                          type="password"
+                          placeholder="Leave empty to keep current password"
+                          value={editPassword}
+                          onChange={(e) => setEditPassword(e.target.value)}
+                          disabled={isSubmitting}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Must be 8-128 characters with uppercase, lowercase, digit, and special character
+                        </p>
+                      </div>
+                    )}
+                    {selectedUser && formData.role === "boss" && (
+                      <p className="text-xs text-muted-foreground">
+                        Password updates are only available for workers
+                      </p>
+                    )}
                   </div>
                   <DialogFooter>
                     <Button

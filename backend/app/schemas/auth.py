@@ -4,7 +4,7 @@ Authentication Pydantic schemas for request/response validation.
 
 from pydantic import BaseModel, Field, EmailStr, field_validator, ConfigDict
 
-from app.models.user import UserRole
+from app.domain.constants import UserRole
 from app.core.security import validate_password_strength
 
 

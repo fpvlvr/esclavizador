@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_validator
 from uuid import UUID
 from datetime import datetime
 
-from app.models.user import UserRole
+from app.domain.constants import UserRole
 from app.core.security import validate_password_strength
 
 
@@ -75,12 +75,30 @@ class UserUpdate(BaseModel):
 
     role: UserRole | None = Field(default=None, description="User role (boss or worker)")
     is_active: bool | None = Field(default=None, description="Account active status")
+    password: str | None = Field(
+        default=None,
+        min_length=8,
+        max_length=128,
+        description="New password (8-128 chars, uppercase, lowercase, digit, special char required). Only bosses can update workers' passwords."
+    )
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str | None) -> str | None:
+        """Password strength validation (only if password is provided)."""
+        if v is None:
+            return v
+        is_valid, error_msg = validate_password_strength(v)
+        if not is_valid:
+            raise ValueError(error_msg)
+        return v
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "role": "worker",
-                "is_active": True
+                "is_active": True,
+                "password": "NewSecurePass123!"
             }
         }
     )

@@ -16,7 +16,7 @@ import jwt
 from fastapi import HTTPException, status
 from tortoise.transactions import in_transaction
 
-from app.models.user import UserRole
+from app.domain.constants import UserRole
 from app.domain.entities import UserData
 from app.core.security import (
     hash_password,

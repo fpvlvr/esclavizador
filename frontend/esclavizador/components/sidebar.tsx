@@ -14,17 +14,21 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
+import { SettingsDialog } from "@/components/settings-dialog"
+import { AccountSettingsDialog } from "@/components/account-settings-dialog"
 
 const navigation = [
   { name: "Timer", href: "/", icon: Timer },
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Reports", href: "/reports", icon: Clock },
   { name: "Bosses & Workers", href: "/users", icon: Users },
-  { name: "Settings", href: "#", icon: Settings },
+  { name: "Settings", href: "#", icon: Settings, isButton: true },
 ]
 
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false)
   const pathname = usePathname()
   const { user, logout } = useAuth()
 
@@ -71,10 +75,29 @@ export function Sidebar() {
           <nav className="flex-1 p-4 space-y-1">
             {navigation.map((item) => {
               const isActive = pathname === item.href
+              if (item.isButton) {
+                return (
+                  <button
+                    key={item.name}
+                    onClick={() => {
+                      setSettingsOpen(true)
+                      setIsOpen(false)
+                    }}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                      "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.name}
+                  </button>
+                )
+              }
               return (
                 <Link
                   key={item.name}
                   href={item.href}
+                  onClick={() => setIsOpen(false)}
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
                     isActive
@@ -113,7 +136,7 @@ export function Sidebar() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem className="cursor-pointer">
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => setAccountSettingsOpen(true)}>
                     <Settings className="mr-2 h-4 w-4" />
                     Account Settings
                   </DropdownMenuItem>
@@ -134,6 +157,15 @@ export function Sidebar() {
         <div
           className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden"
           onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      {user && (
+        <AccountSettingsDialog 
+          open={accountSettingsOpen} 
+          onOpenChange={setAccountSettingsOpen}
+          role={user.role}
         />
       )}
     </>

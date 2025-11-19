@@ -3563,7 +3563,7 @@
           "worker"
         ],
         "title": "UserRole",
-        "description": "User role enumeration."
+        "description": "User role enumeration - domain constant."
       },
       "UserStatsList": {
         "properties": {
@@ -3732,6 +3732,20 @@
             ],
             "title": "Is Active",
             "description": "Account active status"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 8
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password",
+            "description": "New password (8-128 chars, uppercase, lowercase, digit, special char required). Only bosses can update workers' passwords."
           }
         },
         "type": "object",
@@ -3739,6 +3753,7 @@
         "description": "User update schema - all fields optional.",
         "example": {
           "is_active": true,
+          "password": "NewSecurePass123!",
           "role": "worker"
         }
       },

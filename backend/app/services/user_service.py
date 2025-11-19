@@ -60,9 +60,11 @@ class UserService:
         data: UserUpdate
     ) -> UserData:
         """
-        Update user role/status.
+        Update user role/status/password.
 
-        Edge case: Boss cannot deactivate themselves (would lock out of system).
+        Edge cases:
+        - Boss cannot deactivate themselves (would lock out of system).
+        - Cannot update other bosses' passwords (only workers' passwords can be updated).
         """
         # Verify user exists and is in same org
         user = await self.get_user(current_user, user_id)
@@ -74,12 +76,22 @@ class UserService:
                 detail="Cannot deactivate your own account"
             )
 
+        # Prevent updating other bosses' passwords (only workers can have passwords updated)
+        if data.password is not None and user["role"] == "boss":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot update another boss's password"
+            )
+
         # Build update dict (only non-None fields)
         update_data = {}
         if data.role is not None:
             update_data['role'] = data.role
         if data.is_active is not None:
             update_data['is_active'] = data.is_active
+        if data.password is not None:
+            # Hash the password before storing
+            update_data['password_hash'] = hash_password(data.password)
 
         if not update_data:
             # No fields to update - return current user

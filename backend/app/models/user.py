@@ -4,16 +4,10 @@ User model with authentication and role-based access control.
 Schema reference: implementation-plan.md lines 234-247
 """
 
-from enum import Enum
 from tortoise import fields
 from tortoise.models import Model
 
-
-class UserRole(str, Enum):
-    """User role enumeration."""
-
-    BOSS = "boss"  # Admin role with full access
-    WORKER = "worker"  # Regular user with limited access
+from app.domain.constants import UserRole
 
 
 class User(Model):

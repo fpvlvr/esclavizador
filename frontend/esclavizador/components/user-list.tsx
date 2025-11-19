@@ -196,6 +196,8 @@ export function UserList({ users, loading, isBoss, onEdit, onDelete }: UserListP
                       size="icon"
                       className="text-muted-foreground hover:text-foreground hover:bg-accent"
                       onClick={() => onEdit(user)}
+                      disabled={user.role === "boss"}
+                      title={user.role === "boss" ? "Cannot edit other bosses" : "Edit user"}
                     >
                       <Pencil className="h-5 w-5" />
                     </Button>

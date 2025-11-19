@@ -39,6 +39,7 @@ type RegisterFormData = z.infer<typeof registerSchema>
 export default function LoginPage() {
   const { login, register } = useAuth()
   const [createAccountOpen, setCreateAccountOpen] = useState(false)
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false)
   const [isLoggingIn, setIsLoggingIn] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
 
@@ -116,7 +117,50 @@ export default function LoginPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="link" className="p-0 h-auto text-xs font-normal">
+                      Forgot password?
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>Oops...</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4 space-y-3">
+                      <p className="text-foreground font-medium">
+                        Too bad. Password reset is not really implemented yet.
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        If you're a Simple Worker, ask your Boss for a new one. If you're a Big Boss… well, maybe don't rely on your memory next time! 😎
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Want me to suggest a few{" "}
+                        <a
+                          href="https://letmegooglethat.com/?q=best+password+manager+2026"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          good password managers
+                        </a>
+                        ?
+                      </p>
+                      <p className="text-sm text-muted-foreground pt-2">
+                        JK, please drop me a line at{" "}
+                        <a
+                          href="mailto:fpv-lover@proton.me"
+                          className="text-primary hover:underline"
+                        >
+                          fpv-lover@proton.me
+                        </a>
+                      </p>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
               <Input
                 id="password"
                 type="password"

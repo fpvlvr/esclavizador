@@ -9,7 +9,8 @@ from datetime import date
 from tortoise.queryset import Q
 from tortoise.functions import Sum
 
-from app.models.user import User, UserRole
+from app.models.user import User
+from app.domain.constants import UserRole
 from app.models.organization import Organization
 from app.models.time_entry import TimeEntry
 from app.models.project import Project
