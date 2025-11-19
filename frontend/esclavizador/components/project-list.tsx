@@ -43,7 +43,7 @@ interface ProjectTasksState {
 
 export function ProjectList({ projects, loading, onUpdateProject, onDeleteProject }: ProjectListProps) {
   const { user } = useAuth()
-  const { createTask, deleteTask } = useTasks()
+  const { createTask, updateTask, deleteTask } = useTasks()
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
   const [projectTasks, setProjectTasks] = useState<ProjectTasksState>({})
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false)
@@ -65,6 +65,13 @@ export function ProjectList({ projects, loading, onUpdateProject, onDeleteProjec
   const [editProjectDescription, setEditProjectDescription] = useState("")
   const [editProjectColor, setEditProjectColor] = useState("#3b82f6")
   const [isUpdating, setIsUpdating] = useState(false)
+  
+  // Edit task states
+  const [editTaskDialogOpen, setEditTaskDialogOpen] = useState(false)
+  const [taskToEdit, setTaskToEdit] = useState<{ task: TaskResponse; projectId: string } | null>(null)
+  const [editTaskName, setEditTaskName] = useState("")
+  const [editTaskDescription, setEditTaskDescription] = useState("")
+  const [isUpdatingTask, setIsUpdatingTask] = useState(false)
 
   const isBoss = user?.role === 'boss'
 
@@ -244,6 +251,48 @@ export function ProjectList({ projects, loading, onUpdateProject, onDeleteProjec
     }
   }
 
+  const handleEditTaskClick = (task: TaskResponse, projectId: string) => {
+    setTaskToEdit({ task, projectId })
+    setEditTaskName(task.name)
+    setEditTaskDescription(task.description || "")
+    setEditTaskDialogOpen(true)
+  }
+
+  const handleUpdateTask = async () => {
+    if (!taskToEdit || !editTaskName.trim()) return
+
+    setIsUpdatingTask(true)
+    try {
+      await updateTask(taskToEdit.task.id, {
+        name: editTaskName,
+        description: editTaskDescription || null,
+      })
+
+      // Update the task in local state
+      setProjectTasks(prev => {
+        const updated = { ...prev }
+        if (updated[taskToEdit.projectId]) {
+          updated[taskToEdit.projectId] = {
+            ...updated[taskToEdit.projectId],
+            tasks: updated[taskToEdit.projectId].tasks.map(t =>
+              t.id === taskToEdit.task.id
+                ? { ...t, name: editTaskName, description: editTaskDescription || null }
+                : t
+            ),
+          }
+        }
+        return updated
+      })
+
+      setEditTaskDialogOpen(false)
+      setTaskToEdit(null)
+    } catch (error) {
+      // Error already shown via toast
+    } finally {
+      setIsUpdatingTask(false)
+    }
+  }
+
   // Show loading skeleton
   if (loading) {
     return (
@@ -405,17 +454,32 @@ export function ProjectList({ projects, loading, onUpdateProject, onDeleteProjec
                           )}
                         </div>
                         {isBoss && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteTaskClick(task.id, project.id)
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleEditTaskClick(task, project.id)
+                              }}
+                              title="Edit task"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteTaskClick(task.id, project.id)
+                              }}
+                              title="Delete task"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     ))
@@ -577,6 +641,54 @@ export function ProjectList({ projects, loading, onUpdateProject, onDeleteProjec
             </Button>
             <Button onClick={handleUpdateProject} disabled={isUpdating || !editProjectName.trim()}>
               {isUpdating ? "Updating..." : "Update Project"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Task Dialog */}
+      <Dialog open={editTaskDialogOpen} onOpenChange={setEditTaskDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+            <DialogDescription>
+              Update task name and description.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-task-name">Name</Label>
+              <Input
+                id="edit-task-name"
+                placeholder="Enter task name"
+                value={editTaskName}
+                onChange={(e) => setEditTaskName(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-task-description">Description</Label>
+              <Textarea
+                id="edit-task-description"
+                placeholder="Enter task description"
+                value={editTaskDescription}
+                onChange={(e) => setEditTaskDescription(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditTaskDialogOpen(false)
+                setTaskToEdit(null)
+              }}
+              disabled={isUpdatingTask}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateTask} disabled={isUpdatingTask || !editTaskName.trim()}>
+              {isUpdatingTask ? "Updating..." : "Update Task"}
             </Button>
           </DialogFooter>
         </DialogContent>
