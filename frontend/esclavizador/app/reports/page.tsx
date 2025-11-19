@@ -58,6 +58,7 @@ export default function ReportsPage() {
   })
   const [selectedPreset, setSelectedPreset] = useState<PresetType>("lastMonth")
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
+  const [selectingRange, setSelectingRange] = useState<{ start: Date; end?: Date } | null>(null)
 
   // Fetch projects for colors and filtering
   const { projects, loading: projectsLoading } = useProjects()
@@ -185,7 +186,18 @@ export default function ReportsPage() {
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold">Reports</h1>
             
-            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+            <Popover 
+              open={isCalendarOpen} 
+              onOpenChange={(open) => {
+                setIsCalendarOpen(open)
+                if (open) {
+                  // Clear selection state when opening to start fresh
+                  setSelectingRange(null)
+                } else {
+                  setSelectingRange(null)
+                }
+              }}
+            >
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-[280px] justify-start text-left font-normal">
                   <CalendarIcon className="mr-2 h-4 w-4" />
@@ -201,12 +213,30 @@ export default function ReportsPage() {
                 <div className="flex">
                   <div className="border-r p-3">
                     <Calendar
-                      mode="range"
-                      selected={{ from: dateRange.from, to: dateRange.to }}
-                      onSelect={(range) => {
-                        if (range?.from && range?.to) {
-                          setDateRange({ from: range.from, to: range.to })
+                      mode="single"
+                      selected={selectingRange?.start || undefined}
+                      onSelect={(date) => {
+                        if (!date) {
+                          setSelectingRange(null)
+                          return
+                        }
+
+                        if (!selectingRange) {
+                          // First click - start new selection
+                          setSelectingRange({ start: date })
+                        } else if (!selectingRange.end) {
+                          // Second click - complete selection
+                          const start = selectingRange.start
+                          const end = date
+                          const from = start < end ? start : end
+                          const to = start < end ? end : start
+                          setDateRange({ from, to })
                           setSelectedPreset("custom")
+                          setSelectingRange(null)
+                          setIsCalendarOpen(false)
+                        } else {
+                          // Third click - start over
+                          setSelectingRange({ start: date })
                         }
                       }}
                       numberOfMonths={1}
