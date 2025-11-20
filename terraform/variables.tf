@@ -4,18 +4,6 @@ variable "neon_api_key" {
   sensitive   = true
 }
 
-variable "org_id" {
-  description = "Neon Organization ID (from Neon Dashboard → Organization Settings)"
-  type        = string
-  default     = "org-mute-dream-04914225"
-}
-
-variable "project_name" {
-  description = "Name for the Neon project"
-  type        = string
-  default     = "misty‑forest‑02024483"
-}
-
 variable "region" {
   description = "Neon region (e.g., aws-us-east-1)"
   type        = string
