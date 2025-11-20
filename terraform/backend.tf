@@ -5,7 +5,7 @@ terraform {
     organization = "fpvlvr-org"
 
     workspaces {
-      name = "esclavizador"
+      name = "esclavizador-github-actions"
     }
   }
 }
