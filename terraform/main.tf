@@ -8,7 +8,5 @@ resource "neon_project" "esclavizador_project" {
     name          = var.branch_name
     database_name = var.database_name
     role_name     = var.role_name
-    role_password = var.role_password
-    superuser     = true
   }
 }
