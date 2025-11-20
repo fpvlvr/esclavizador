@@ -39,13 +39,15 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve -no-color
+        working-directory: terraform
       
       - name: Save Terraform Outputs
         run: terraform output -json > tf_outputs.json
+        working-directory: terraform
       
       - name: Upload Terraform Outputs
         uses: actions/upload-artifact@v5
         with:
           name: terraform-outputs
-          path: tf_outputs.json
+          path: terraform/tf_outputs.json
           retention-days: 3
