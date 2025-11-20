@@ -1,7 +1,3 @@
-provider "neon" {
-  api_key = var.neon_api_key
-}
-
 resource "neon_project" "esclavizador_project" {
   name   = var.project_name
   org_id = var.org_id
