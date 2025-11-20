@@ -16,7 +16,7 @@ jobs:
 
     env:
       TF_LOG: DEBUG
-      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      TF_VAR_NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
     #   GOOGLE_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS_JSON }}
     #   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
     #   GCP_REGION: ${{ secrets.GCP_REGION }}
