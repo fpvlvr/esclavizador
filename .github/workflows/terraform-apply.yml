@@ -1,0 +1,41 @@
+name: Terraform Apply (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type APPLY to confirm apply"
+        required: true
+
+jobs:
+  terraform-apply:
+    name: Manual Terraform Apply
+    runs-on: ubuntu-latest
+
+    if: ${{ github.event.inputs.confirm == 'APPLY' }}
+
+    env:
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+    #   GOOGLE_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS_JSON }}
+    #   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+    #   GCP_REGION: ${{ secrets.GCP_REGION }}
+
+    defaults:
+      run:
+        working-directory: terraform
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan -no-color
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -no-color
