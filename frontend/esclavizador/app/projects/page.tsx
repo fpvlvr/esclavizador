@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { HexColorPicker } from "react-colorful"
 import { ProtectedRoute } from "@/components/protected-route"
 import { Sidebar } from "@/components/sidebar"
 import { ProjectList } from "@/components/project-list"
+import { SearchInput } from "@/components/search-input"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -30,8 +31,19 @@ export default function ProjectsPage() {
   const [projectDescription, setProjectDescription] = useState("")
   const [selectedColor, setSelectedColor] = useState("#3b82f6")
   const [isCreating, setIsCreating] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
 
   const isBoss = user?.role === 'boss'
+
+  // Filter projects based on search query
+  const filteredProjects = useMemo(() => {
+    if (!searchQuery.trim()) return projects
+    const query = searchQuery.toLowerCase()
+    return projects.filter((project) =>
+      project.name.toLowerCase().includes(query) ||
+      project.description?.toLowerCase().includes(query)
+    )
+  }, [projects, searchQuery])
 
   const handleAddProject = async () => {
     if (!projectName.trim()) return
@@ -64,7 +76,13 @@ export default function ProjectsPage() {
             <div className="flex items-center justify-between">
               <h1 className="text-3xl font-bold text-balance">Projects</h1>
 
-              {isBoss && (
+              <div className="flex items-center gap-4">
+                <SearchInput
+                  placeholder="Search projects..."
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                />
+                {isBoss && (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button>
@@ -135,12 +153,13 @@ export default function ProjectsPage() {
                       {isCreating ? "Creating..." : "Add Project"}
                     </Button>
                   </DialogFooter>
-                </DialogContent>
-              </Dialog>
-              )}
+                  </DialogContent>
+                </Dialog>
+                )}
+              </div>
             </div>
 
-            <ProjectList projects={projects} loading={loading} onUpdateProject={updateProject} onDeleteProject={deleteProject} />
+            <ProjectList projects={filteredProjects} loading={loading} onUpdateProject={updateProject} onDeleteProject={deleteProject} />
           </div>
         </main>
       </div>

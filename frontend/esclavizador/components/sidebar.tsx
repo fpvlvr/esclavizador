@@ -73,7 +73,15 @@ export function Sidebar() {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1">
-            {navigation.map((item) => {
+            {navigation
+              .filter((item) => {
+                // Hide "Bosses & Workers" for workers
+                if (item.href === "/users" && user?.role === "worker") {
+                  return false
+                }
+                return true
+              })
+              .map((item) => {
               const isActive = pathname === item.href
               if (item.isButton) {
                 return (

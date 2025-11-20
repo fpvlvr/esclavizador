@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { ProtectedRoute } from "@/components/protected-route"
 import { Sidebar } from "@/components/sidebar"
 import { UserList } from "@/components/user-list"
+import { SearchInput } from "@/components/search-input"
 import { useUsers } from "@/hooks/use-users"
 import { useAuth } from "@/hooks/use-auth"
 import { Plus } from 'lucide-react'
@@ -43,8 +44,19 @@ export default function UsersPage() {
   const [editPassword, setEditPassword] = useState("")
   const [isActive, setIsActive] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
 
   const isBoss = currentUser?.role === "boss"
+
+  // Filter users based on search query
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return users
+    const query = searchQuery.toLowerCase()
+    return users.filter((user) =>
+      user.email.toLowerCase().includes(query) ||
+      user.role.toLowerCase().includes(query)
+    )
+  }, [users, searchQuery])
 
   const resetForm = () => {
     setFormData({
@@ -133,7 +145,13 @@ export default function UsersPage() {
                   Manage your team members and their access
                 </p>
               </div>
-              {isBoss && (
+              <div className="flex items-center gap-4">
+                <SearchInput
+                  placeholder="Search users..."
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                />
+                {isBoss && (
                 <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                   <DialogTrigger asChild>
                     <Button size="lg" className="gap-2">
@@ -219,7 +237,8 @@ export default function UsersPage() {
                     </form>
                   </DialogContent>
                 </Dialog>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Edit User Dialog */}
@@ -316,7 +335,7 @@ export default function UsersPage() {
 
             {/* Users List */}
             <UserList
-              users={users}
+              users={filteredUsers}
               loading={loading}
               isBoss={isBoss}
               onEdit={openEditDialog}

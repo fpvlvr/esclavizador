@@ -5,7 +5,7 @@ import {
   updateUserApiV1UsersUserIdPut,
   deleteUserApiV1UsersUserIdDelete,
 } from '@/lib/api/generated'
-import { getAuthHeaders } from '@/lib/api/client'
+import { getAuthHeaders, extractApiErrorMessage } from '@/lib/api/client'
 import type { UserStatsResponse, UserCreate, UserUpdate } from '@/lib/api/generated'
 import { toast } from 'sonner'
 
@@ -74,7 +74,8 @@ export function useUsers(): UseUsersReturn {
       })
 
       if (apiError || !data) {
-        throw new Error('Failed to create user')
+        const errorMessage = extractApiErrorMessage(apiError, 'Failed to create user')
+        throw new Error(errorMessage)
       }
 
       toast.success('User created successfully')
@@ -95,7 +96,8 @@ export function useUsers(): UseUsersReturn {
       })
 
       if (apiError || !data) {
-        throw new Error('Failed to update user')
+        const errorMessage = extractApiErrorMessage(apiError, 'Failed to update user')
+        throw new Error(errorMessage)
       }
 
       toast.success('User updated successfully')
