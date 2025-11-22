@@ -307,6 +307,77 @@ resource "google_cloud_run_v2_service_iam_member" "backend_noauth" {
 }
 
 # ===================================
+# GCP: Cloud Run Job - Database Migrations
+# ===================================
+
+resource "google_cloud_run_v2_job" "migrations" {
+  name     = "esclavizador-migrations"
+  location = var.gcp_region
+
+  template {
+    template {
+      service_account = google_service_account.cloudrun.email
+      max_retries     = 0 # Migrations should fail fast
+
+      containers {
+        # Image is managed by gcloud CLI (same as backend service)
+        # Initial image: Public hello-world (first deploy only)
+        # Subsequent updates: GitHub Actions updates with backend image
+        image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
+
+        # Override entrypoint to run migrations
+        command = ["aerich", "upgrade"]
+
+        resources {
+          limits = {
+            cpu    = "1000m"
+            memory = "512Mi"
+          }
+        }
+
+        # Same environment variables as backend service
+        env {
+          name  = "DATABASE_URL"
+          value = neon_project.esclavizador_project.connection_uri
+        }
+
+        env {
+          name  = "SECRET_KEY"
+          value = var.secret_key
+        }
+
+        env {
+          name  = "ALGORITHM"
+          value = var.jwt_algorithm
+        }
+
+        env {
+          name  = "ACCESS_TOKEN_EXPIRE_MINUTES"
+          value = tostring(var.access_token_expire_minutes)
+        }
+
+        env {
+          name  = "REFRESH_TOKEN_EXPIRE_DAYS"
+          value = tostring(var.refresh_token_expire_days)
+        }
+      }
+    }
+  }
+
+  # Ignore image changes - managed by gcloud CLI
+  lifecycle {
+    ignore_changes = [
+      template[0].template[0].containers[0].image
+    ]
+  }
+
+  depends_on = [
+    google_project_service.cloud_run,
+    google_artifact_registry_repository.esclavizador
+  ]
+}
+
+# ===================================
 # Firebase Project and Hosting
 # ===================================
 

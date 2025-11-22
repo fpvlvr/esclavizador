@@ -1,22 +1,26 @@
-name: Terraform Apply (Manual)
+name: Terraform Plan & Apply
 
 on:
+  push:
+    paths:
+      - "terraform/**"
+    branches:
+      - main
   workflow_dispatch:
     inputs:
-      confirm:
-        description: "Type APPLY to confirm apply"
-        required: true
+      apply:
+        description: "Apply changes (otherwise plan-only)"
+        type: boolean
+        required: false
+        default: false
 
 jobs:
-  terraform-apply:
-    name: Manual Terraform Apply
+  terraform:
+    name: Terraform Plan & Apply
     runs-on: ubuntu-latest
-
-    if: ${{ github.event.inputs.confirm == 'APPLY' }}
 
     env:
       TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
-    #   GOOGLE_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS_JSON }}
 
     defaults:
       run:
@@ -34,18 +38,26 @@ jobs:
       - name: Terraform Init
         run: terraform init -reconfigure
 
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
       - name: Terraform Plan
         run: terraform plan -no-color
 
       - name: Terraform Apply
+        # Apply if: push to main OR workflow_dispatch with apply=true
+        if: github.event_name == 'push' || github.event.inputs.apply == 'true'
         run: terraform apply -auto-approve -no-color
-        working-directory: terraform
-      
+
       - name: Save Terraform Outputs
+        if: github.event_name == 'push' || github.event.inputs.apply == 'true'
         run: terraform output -json > tf_outputs.json
-        working-directory: terraform
-      
+
       - name: Upload Terraform Outputs
+        if: github.event_name == 'push' || github.event.inputs.apply == 'true'
         uses: actions/upload-artifact@v5
         with:
           name: terraform-outputs

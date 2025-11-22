@@ -52,19 +52,25 @@ jobs:
           docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7}
           docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/esclavizador/backend:latest
 
+      - name: Run database migrations
+        run: |
+          # Update migration job with new image
+          gcloud run jobs update esclavizador-migrations \
+            --image=${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7} \
+            --region=${{ env.GCP_REGION }} \
+            --quiet
+
+          # Execute migrations - fail fast if migrations fail
+          gcloud run jobs execute esclavizador-migrations \
+            --region=${{ env.GCP_REGION }} \
+            --wait
+
       - name: Deploy to Cloud Run
         run: |
           gcloud run services update esclavizador-backend \
             --image=${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7} \
             --region=${{ env.GCP_REGION }} \
             --quiet
-
-      - name: Run database migrations
-        run: |
-          gcloud run services update esclavizador-backend \
-            --region=${{ env.GCP_REGION }} \
-            --execute-command="aerich upgrade" \
-            --quiet || true
 
   # Deploy frontend to Firebase Hosting
   deploy-frontend:
