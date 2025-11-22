@@ -19,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -184,9 +185,8 @@ export default function UsersPage() {
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="add-password">Password</Label>
-                          <Input
+                          <PasswordInput
                             id="add-password"
-                            type="password"
                             placeholder="Min 8 chars, uppercase, lowercase, digit, special char"
                             value={formData.password}
                             onChange={(e) =>
@@ -293,9 +293,8 @@ export default function UsersPage() {
                     {selectedUser && formData.role === "worker" && (
                       <div className="space-y-2">
                         <Label htmlFor="edit-password">New Password (optional)</Label>
-                        <Input
+                        <PasswordInput
                           id="edit-password"
-                          type="password"
                           placeholder="Leave empty to keep current password"
                           value={editPassword}
                           onChange={(e) => setEditPassword(e.target.value)}
