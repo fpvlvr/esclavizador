@@ -232,11 +232,11 @@ resource "google_cloud_run_v2_service" "backend" {
       }
 
       env {
-        name  = "CORS_ORIGINS"
+        name = "CORS_ORIGINS"
         value = jsonencode([
           "https://${var.gcp_project_id}.web.app",
           "https://${var.gcp_project_id}.firebaseapp.com",
-          "http://localhost:3000"  # For local development
+          "http://localhost:3000" # For local development
         ])
       }
 
