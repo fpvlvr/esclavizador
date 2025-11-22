@@ -6,6 +6,12 @@ on:
   #     - main
   workflow_dispatch:
 
+# Static configuration - version controlled
+env:
+  GCP_PROJECT_ID: asymmetric-cove-478623-g3
+  GCP_REGION: us-central1
+  FIREBASE_PROJECT_ID: asymmetric-cove-478623-g3
+
 jobs:
   # Detect what changed to optimize deployments
   detect-changes:
@@ -47,39 +53,39 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker for Artifact Registry
         run: |
-          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
+          gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
 
       - name: Build backend Docker image
         working-directory: backend
         run: |
-          docker build -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7} .
-          docker tag ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7} \
-                     ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/esclavizador/backend:latest
+          docker build -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7} .
+          docker tag ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7} \
+                     ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/esclavizador/backend:latest
 
       - name: Push Docker image to Artifact Registry
         run: |
-          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7}
-          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/esclavizador/backend:latest
+          docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7}
+          docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/esclavizador/backend:latest
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run services update esclavizador-backend \
-            --image=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7} \
-            --region=${{ secrets.GCP_REGION }} \
+            --image=${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7} \
+            --region=${{ env.GCP_REGION }} \
             --quiet
 
       - name: Run database migrations
         run: |
           gcloud run services update esclavizador-backend \
-            --region=${{ secrets.GCP_REGION }} \
+            --region=${{ env.GCP_REGION }} \
             --execute-command="aerich upgrade" \
             --quiet || true
 
@@ -115,7 +121,7 @@ jobs:
 
       - name: Build Next.js static export
         env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.BACKEND_URL }}
+          NEXT_PUBLIC_API_URL: ${{ vars.BACKEND_URL }}
         run: npm run build
 
       - name: Deploy to Firebase Hosting
@@ -124,5 +130,5 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_TOKEN }}
           channelId: live
-          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+          projectId: ${{ env.FIREBASE_PROJECT_ID }}
           entryPoint: frontend/esclavizador
