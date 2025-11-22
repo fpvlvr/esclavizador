@@ -9,12 +9,6 @@ from tortoise.models import Model
 
 
 class Project(Model):
-    """
-    Project model for organizing tasks and time entries.
-
-    Projects belong to an organization and contain tasks.
-    Time entries are tracked against specific projects.
-    """
 
     id = fields.UUIDField(primary_key=True)
     name = fields.CharField(max_length=255, null=False)

@@ -84,12 +84,6 @@ class Settings(BaseSettings):
 
     @property
     def tortoise_orm_config(self) -> dict:
-        """
-        Generate Tortoise ORM configuration.
-
-        Returns:
-            dict: Tortoise ORM configuration dictionary
-        """
         return {
             "connections": {
                 "default": self.database_url

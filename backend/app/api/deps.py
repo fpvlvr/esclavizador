@@ -26,21 +26,6 @@ security = HTTPBearer()
 async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]
 ) -> UserData:
-    """
-    Get current authenticated user from JWT token.
-
-    Extracts Bearer token from Authorization header, decodes it,
-    and fetches the user from the database.
-
-    Args:
-        credentials: HTTP Bearer credentials (injected by FastAPI)
-
-    Returns:
-        Current user as UserData dict
-
-    Raises:
-        HTTPException(401): Invalid or expired token, or user not found
-    """
     token = credentials.credentials
 
     try:
@@ -84,18 +69,6 @@ async def get_current_user(
 async def get_current_active_user(
     current_user: Annotated[UserData, Depends(get_current_user)]
 ) -> UserData:
-    """
-    Get current active user (checks is_active flag).
-
-    Args:
-        current_user: Current user dict (injected by get_current_user)
-
-    Returns:
-        Current active user as UserData dict
-
-    Raises:
-        HTTPException(403): Account inactive
-    """
     if not current_user["is_active"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -107,21 +80,6 @@ async def get_current_active_user(
 async def require_boss_role(
     current_user: Annotated[UserData, Depends(get_current_active_user)]
 ) -> UserData:
-    """
-    Require boss role for endpoint access.
-
-    Use this dependency on endpoints that should only be
-    accessible to boss users (admins).
-
-    Args:
-        current_user: Current active user dict (injected by get_current_active_user)
-
-    Returns:
-        Current boss user as UserData dict
-
-    Raises:
-        HTTPException(403): User is not a boss
-    """
     if current_user["role"] != "boss":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

@@ -10,8 +10,6 @@ from tortoise.models import Model
 
 class Task(Model):
     """
-    Task model for granular work tracking within projects.
-
     Tasks belong to projects and are used to categorize time entries
     within a project's scope.
     """

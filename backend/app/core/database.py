@@ -29,14 +29,7 @@ async def close_db() -> None:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     FastAPI lifespan context manager for database initialization and cleanup.
-
     This replaces the old startup/shutdown events in FastAPI.
-
-    Args:
-        app: FastAPI application instance
-
-    Yields:
-        None
     """
     # Startup: Initialize database
     async with RegisterTortoise(

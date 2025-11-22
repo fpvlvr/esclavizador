@@ -1,0 +1,187 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  # Detect what changed to optimize deployments
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      terraform: ${{ steps.filter.outputs.terraform }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/esclavizador/**'
+            terraform:
+              - 'terraform/**'
+
+  # Deploy infrastructure changes via Terraform
+  deploy-infrastructure:
+    name: Deploy Infrastructure (Terraform)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.terraform == 'true'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: terraform
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Terraform Init
+        run: terraform init -reconfigure
+
+      - name: Terraform Plan
+        run: terraform plan -no-color
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -no-color
+
+  # Deploy backend code via gcloud (fast path)
+  deploy-backend:
+    name: Deploy Backend (gcloud)
+    needs: [detect-changes, deploy-infrastructure]
+    # Run if backend changed OR if infrastructure was deployed (may affect backend)
+    if: |
+      always() &&
+      (needs.detect-changes.outputs.backend == 'true' ||
+       needs.deploy-infrastructure.result == 'success') &&
+      needs.detect-changes.result == 'success'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write  # Required for Workload Identity Federation
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
+
+      - name: Build backend Docker image
+        working-directory: backend
+        run: |
+          docker build -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7} .
+          docker tag ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7} \
+                     ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/esclavizador/backend:latest
+
+      - name: Push Docker image to Artifact Registry
+        run: |
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7}
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/esclavizador/backend:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run services update esclavizador-backend \
+            --image=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7} \
+            --region=${{ secrets.GCP_REGION }} \
+            --quiet
+
+      - name: Run database migrations
+        run: |
+          gcloud run services update esclavizador-backend \
+            --region=${{ secrets.GCP_REGION }} \
+            --execute-command="aerich upgrade" \
+            --quiet || true
+
+  # Deploy frontend to Firebase Hosting
+  deploy-frontend:
+    name: Deploy Frontend (Firebase)
+    needs: [detect-changes, deploy-backend]
+    # Run if frontend changed OR if backend was deployed (may have new API URL)
+    if: |
+      always() &&
+      (needs.detect-changes.outputs.frontend == 'true' ||
+       needs.deploy-backend.result == 'success') &&
+      needs.detect-changes.result == 'success'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend/esclavizador
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/esclavizador/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js static export
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.BACKEND_URL }}
+        run: npm run build
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_TOKEN }}
+          channelId: live
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+          entryPoint: frontend/esclavizador
+
+  # Summary of deployment
+  deployment-summary:
+    name: Deployment Summary
+    needs: [detect-changes, deploy-infrastructure, deploy-backend, deploy-frontend]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Print deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Changes Detected:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend: ${{ needs.detect-changes.outputs.backend }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend: ${{ needs.detect-changes.outputs.frontend }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Terraform: ${{ needs.detect-changes.outputs.terraform }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment Results:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Infrastructure: ${{ needs.deploy-infrastructure.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend: ${{ needs.deploy-backend.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend: ${{ needs.deploy-frontend.result }}" >> $GITHUB_STEP_SUMMARY

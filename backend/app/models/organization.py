@@ -9,12 +9,6 @@ from tortoise.models import Model
 
 
 class Organization(Model):
-    """
-    Organization model for multi-tenant architecture.
-
-    Each organization represents a separate company/entity using the system.
-    All other entities (users, projects, tasks, etc.) belong to an organization.
-    """
 
     id = fields.UUIDField(primary_key=True)
     name = fields.CharField(
