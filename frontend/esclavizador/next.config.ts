@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: 'export',  // Enable static export for Firebase Hosting
+  images: {
+    unoptimized: true,  // Firebase Hosting doesn't support next/image optimization
+  },
 };
 
 export default nextConfig;
