@@ -1,13 +1,4 @@
 # ===================================
-# Local Variables
-# ===================================
-
-locals {
-  # Use firebase_project_id if set, otherwise use gcp_project_id
-  firebase_project = var.firebase_project_id != "" ? var.firebase_project_id : var.gcp_project_id
-}
-
-# ===================================
 # Neon PostgreSQL Database
 # ===================================
 
@@ -198,8 +189,10 @@ resource "google_cloud_run_v2_service" "backend" {
 
     containers {
       # Image is managed by gcloud CLI for fast code deployments
-      # Terraform only sets initial image, subsequent updates via gcloud
-      image = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/esclavizador/backend:latest"
+      # Initial image: Public hello-world (first deploy only)
+      # Subsequent updates: gcloud CLI updates with real backend image
+      # lifecycle.ignore_changes ensures Terraform doesn't revert to this placeholder
+      image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
 
       ports {
         container_port = 8000
@@ -241,8 +234,8 @@ resource "google_cloud_run_v2_service" "backend" {
       env {
         name  = "CORS_ORIGINS"
         value = jsonencode([
-          "https://${local.firebase_project}.web.app",
-          "https://${local.firebase_project}.firebaseapp.com",
+          "https://${var.gcp_project_id}.web.app",
+          "https://${var.gcp_project_id}.firebaseapp.com",
           "http://localhost:3000"  # For local development
         ])
       }

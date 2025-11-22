@@ -24,8 +24,8 @@ output "backend_url" {
 
 output "frontend_urls" {
   value = {
-    primary   = "https://${local.firebase_project}.web.app"
-    secondary = "https://${local.firebase_project}.firebaseapp.com"
+    primary   = "https://${var.gcp_project_id}.web.app"
+    secondary = "https://${var.gcp_project_id}.firebaseapp.com"
   }
   description = "Frontend Firebase Hosting URLs"
 }

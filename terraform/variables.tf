@@ -13,7 +13,7 @@
 #
 # Required variables:
 #   - neon_api_key       (from Neon Console → API Keys)
-#   - gcp_project_id     (your GCP project ID)
+#   - gcp_project_id     (your GCP project ID - also used for Firebase Hosting URLs)
 #   - secret_key         (generate: openssl rand -base64 32)
 #
 # Optional variables (have defaults):
@@ -22,6 +22,8 @@
 #
 # For Workload Identity Federation (recommended):
 #   - github_repository  (format: "username/esclavizador")
+#
+# Note: Firebase Hosting will use the same project ID as GCP (gcp_project_id)
 #
 # ===================================
 
@@ -73,12 +75,6 @@ variable "gcp_region" {
   description = "GCP region for resources (e.g., us-central1)"
   type        = string
   default     = "us-central1"
-}
-
-variable "firebase_project_id" {
-  description = "Firebase project ID for frontend hosting (defaults to GCP project ID)"
-  type        = string
-  default     = ""
 }
 
 # Docker Image Tags
