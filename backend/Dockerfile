@@ -1,5 +1,5 @@
 # Multi-stage build for production FastAPI deployment on Cloud Run
-FROM python:3.13-slim AS builder
+FROM python:3.14-slim AS builder
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -27,11 +27,12 @@ RUN poetry install --no-root --only main && rm -rf $POETRY_CACHE_DIR
 # ===================================
 # Runtime stage
 # ===================================
-FROM python:3.13-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y \
     libpq5 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
@@ -58,7 +59,7 @@ EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+    CMD curl -f http://localhost:8000/health || exit 1
 
 # Run the application with Uvicorn
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -139,10 +139,7 @@ files = [
 ]
 
 [package.dependencies]
-cffi = [
-    {version = ">=1.0.1", markers = "python_version < \"3.14\""},
-    {version = ">=2.0.0b1", markers = "python_version >= \"3.14\""},
-]
+cffi = {version = ">=2.0.0b1", markers = "python_version >= \"3.14\""}
 
 [[package]]
 name = "asyncclick"
@@ -1713,5 +1710,5 @@ files = [
 
 [metadata]
 lock-version = "2.1"
-python-versions = "^3.13"
-content-hash = "86c748de5d4fef03db9d565221ceef5cd34105e33d4019657833886f2b31a035"
+python-versions = "^3.14"
+content-hash = "2ee1556cbe814181f13e415908faf27de16f611f6a9a90fb685d64a1ad50c850"
