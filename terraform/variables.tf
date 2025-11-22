@@ -77,6 +77,12 @@ variable "gcp_region" {
   default     = "us-central1"
 }
 
+variable "gcp_credentials" {
+  description = "GCP service account credentials JSON (for Terraform Cloud authentication)"
+  type        = string
+  sensitive   = true
+}
+
 # Docker Image Tags
 # Note: Backend image tag is managed by gcloud CLI (not Terraform)
 # See lifecycle.ignore_changes in main.tf
