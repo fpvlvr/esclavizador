@@ -101,6 +101,10 @@ jobs:
       needs.detect-changes.result == 'success'
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      id-token: write  # Required for Workload Identity Federation
+
     defaults:
       run:
         working-directory: frontend/esclavizador
@@ -108,6 +112,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -125,10 +135,6 @@ jobs:
         run: npm run build
 
       - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_TOKEN }}
-          channelId: live
-          projectId: ${{ env.FIREBASE_PROJECT_ID }}
-          entryPoint: frontend/esclavizador
+        run: |
+          npm install -g firebase-tools
+          firebase deploy --only hosting --project ${{ env.FIREBASE_PROJECT_ID }}

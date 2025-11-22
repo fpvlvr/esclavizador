@@ -133,6 +133,13 @@ resource "google_project_iam_member" "github_actions_service_account_user" {
   member  = "serviceAccount:${google_service_account.github_actions.email}"
 }
 
+# Grant GitHub Actions SA permissions to deploy Firebase Hosting
+resource "google_project_iam_member" "github_actions_firebase" {
+  project = var.gcp_project_id
+  role    = "roles/firebasehosting.admin"
+  member  = "serviceAccount:${google_service_account.github_actions.email}"
+}
+
 # ===================================
 # GCP: Workload Identity Federation
 # ===================================
