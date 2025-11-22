@@ -60,7 +60,7 @@ resource "google_artifact_registry_repository" "esclavizador" {
 
   cleanup_policies {
     id     = "keep-recent-versions"
-    action = "DELETE"
+    action = "KEEP"
 
     most_recent_versions {
       keep_count = 2 # Current + 1 previous for rollback
