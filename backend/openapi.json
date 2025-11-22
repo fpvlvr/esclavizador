@@ -3524,6 +3524,11 @@
             "title": "Organization Id",
             "description": "Organization ID"
           },
+          "organization_name": {
+            "type": "string",
+            "title": "Organization Name",
+            "description": "Organization name"
+          },
           "is_active": {
             "type": "boolean",
             "title": "Is Active",
@@ -3542,6 +3547,7 @@
           "email",
           "role",
           "organization_id",
+          "organization_name",
           "is_active",
           "created_at"
         ],
@@ -3553,6 +3559,7 @@
           "id": "123e4567-e89b-12d3-a456-426614174000",
           "is_active": true,
           "organization_id": "123e4567-e89b-12d3-a456-426614174001",
+          "organization_name": "My Organization",
           "role": "worker"
         }
       },

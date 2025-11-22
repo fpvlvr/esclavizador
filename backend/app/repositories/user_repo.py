@@ -23,14 +23,19 @@ class UserRepository(BaseRepository[User, UserData]):
 
     model = User
 
-    def _to_dict(self, user: User) -> UserData:
+    async def _to_dict(self, user: User) -> UserData:
         """Convert User ORM instance to UserData dict."""
+        # Fetch organization if not already loaded
+        if not hasattr(user, '_organization_cached'):
+            await user.fetch_related('organization')
+
         return {
             "id": user.id,
             "email": user.email,
             "password_hash": user.password_hash,
             "role": user.role.value,
             "organization_id": user.organization_id,
+            "organization_name": user.organization.name,
             "is_active": user.is_active,
             "created_at": user.created_at,
         }
@@ -51,7 +56,7 @@ class UserRepository(BaseRepository[User, UserData]):
             return None
 
         # Convert ORM → UserData dict using _to_dict
-        return self._to_dict(user)
+        return await self._to_dict(user)
 
     async def create_user(
         self,
@@ -83,7 +88,7 @@ class UserRepository(BaseRepository[User, UserData]):
         )
 
         # Convert ORM → UserData dict using _to_dict
-        return self._to_dict(user)
+        return await self._to_dict(user)
 
     async def get_by_id(self, user_id: str) -> Optional[UserData]:
         """
@@ -101,7 +106,7 @@ class UserRepository(BaseRepository[User, UserData]):
             return None
 
         # Convert ORM → UserData dict using _to_dict
-        return self._to_dict(user)
+        return await self._to_dict(user)
 
     async def update(self, user_id: str, data: dict) -> Optional[UserData]:
         """Generic update - accepts any dict of User model fields."""
@@ -114,7 +119,7 @@ class UserRepository(BaseRepository[User, UserData]):
             setattr(user, key, value)
 
         await user.save()
-        return self._to_dict(user)
+        return await self._to_dict(user)
 
     async def list(
         self,
@@ -135,8 +140,13 @@ class UserRepository(BaseRepository[User, UserData]):
         total = await query.count()
         users = await query.offset(offset).limit(limit).order_by('-created_at').all()
 
+        # Convert users to dicts (async)
+        items = []
+        for user in users:
+            items.append(await self._to_dict(user))
+
         return {
-            "items": [self._to_dict(user) for user in users],
+            "items": items,
             "total": total,
             "limit": limit,
             "offset": offset
@@ -211,8 +221,9 @@ class UserRepository(BaseRepository[User, UserData]):
                 ]
 
             # Build user stats dict
+            user_dict = await self._to_dict(user)
             user_stats = {
-                **self._to_dict(user),
+                **user_dict,
                 "total_time_seconds": total_seconds,
                 "projects": projects
             }

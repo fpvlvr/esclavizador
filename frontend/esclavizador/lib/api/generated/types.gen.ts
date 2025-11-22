@@ -925,6 +925,12 @@ export type UserResponse = {
      */
     organization_id: string;
     /**
+     * Organization Name
+     *
+     * Organization name
+     */
+    organization_name: string;
+    /**
      * Is Active
      *
      * Account active status

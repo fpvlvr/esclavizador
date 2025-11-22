@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Clock, FolderKanban, Settings, Menu, X, Timer, LogOut, ChevronUp, Users } from 'lucide-react'
+import { Clock, FolderKanban, Settings, Menu, X, Timer, LogOut, ChevronUp, Users, BarChart3 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -20,7 +20,7 @@ import { AccountSettingsDialog } from "@/components/account-settings-dialog"
 const navigation = [
   { name: "Timer", href: "/", icon: Timer },
   { name: "Projects", href: "/projects", icon: FolderKanban },
-  { name: "Reports", href: "/reports", icon: Clock },
+  { name: "Reports", href: "/reports", icon: BarChart3 },
   { name: "Bosses & Workers", href: "/users", icon: Users },
   { name: "Settings", href: "#", icon: Settings, isButton: true },
 ]
@@ -68,7 +68,7 @@ export function Sidebar() {
           {/* Logo */}
           <div className="flex items-center gap-2 p-6 border-b border-border">
             <Clock className="h-6 w-6 text-primary" />
-            <span className="text-xl font-semibold">Esclavizador</span>
+            <span className="text-xl font-semibold">{user?.organization_name || "Esclavizador"}</span>
           </div>
 
           {/* Navigation */}
