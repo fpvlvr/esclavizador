@@ -62,11 +62,6 @@ resource "google_artifact_registry_repository" "esclavizador" {
     id     = "keep-recent-versions"
     action = "DELETE"
 
-    condition {
-      tag_state  = "TAGGED"
-      older_than = "604800s" # 7 days
-    }
-
     most_recent_versions {
       keep_count = 2 # Current + 1 previous for rollback
     }
@@ -94,6 +89,8 @@ resource "google_service_account" "cloudrun" {
   account_id   = "cloudrun"
   display_name = "Cloud Run Service Account"
   description  = "Service account for backend and frontend Cloud Run services"
+
+  depends_on = [google_project_service.iam]
 }
 
 # Service account for GitHub Actions deployments
@@ -101,6 +98,8 @@ resource "google_service_account" "github_actions" {
   account_id   = "github-actions"
   display_name = "GitHub Actions Deployment"
   description  = "Service account for GitHub Actions to deploy Cloud Run services"
+
+  depends_on = [google_project_service.iam]
 }
 
 # Grant GitHub Actions SA permissions to push to Artifact Registry
@@ -155,6 +154,8 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
     "attribute.actor"      = "assertion.actor"
     "attribute.repository" = "assertion.repository"
   }
+
+  attribute_condition = "attribute.repository == '${var.github_repository}'"
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
