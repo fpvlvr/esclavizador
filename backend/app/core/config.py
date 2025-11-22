@@ -3,7 +3,8 @@ Application configuration settings.
 Uses Pydantic Settings for environment variable management.
 """
 
-from typing import List
+from typing import Any, Dict, List
+from urllib.parse import parse_qs, urlparse, urlunparse
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -82,11 +83,50 @@ class Settings(BaseSettings):
             return [host.strip() for host in v.split(",")]
         return v
 
+    def _parse_database_credentials(self) -> Dict[str, Any]:
+        """
+        Parse DATABASE_URL and convert to asyncpg-compatible credentials.
+
+        Handles conversion of PostgreSQL connection parameters to asyncpg format:
+        - sslmode=require/disable → ssl=True/False
+        - Extracts host, port, user, password, database
+        """
+        parsed = urlparse(self.database_url)
+
+        # Parse query parameters
+        query_params = parse_qs(parsed.query)
+
+        # Convert sslmode to ssl parameter for asyncpg
+        ssl_config: bool | str = False
+        if "sslmode" in query_params:
+            sslmode = query_params["sslmode"][0]
+            if sslmode in ("require", "verify-ca", "verify-full"):
+                ssl_config = True
+            elif sslmode == "prefer":
+                ssl_config = "prefer"
+
+        credentials = {
+            "host": parsed.hostname,
+            "port": parsed.port or 5432,
+            "user": parsed.username,
+            "password": parsed.password,
+            "database": parsed.path.lstrip("/"),
+        }
+
+        # Only add ssl if it's needed
+        if ssl_config:
+            credentials["ssl"] = ssl_config
+
+        return credentials
+
     @property
     def tortoise_orm_config(self) -> dict:
         return {
             "connections": {
-                "default": self.database_url
+                "default": {
+                    "engine": "tortoise.backends.asyncpg",
+                    "credentials": self._parse_database_credentials(),
+                }
             },
             "apps": {
                 "models": {
