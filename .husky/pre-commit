@@ -21,16 +21,25 @@ if [ -n "$SKIP_HOOKS" ]; then
     exit 0
 fi
 
-printf "${YELLOW}→ Running pre-commit: OpenAPI sync${NC}\n"
+printf "${YELLOW}→ Running pre-commit hooks${NC}\n"
 
 # Detect what changed in staged files
+TERRAFORM_CHANGED=$(git diff --cached --name-only | grep -E '^terraform/.*\.tf$' || true)
 BACKEND_CHANGED=$(git diff --cached --name-only | grep -E '^backend/.*\.py$' || true)
 OPENAPI_CHANGED=$(git diff --cached --name-only | grep 'backend/openapi.json' || true)
 
-# Determine what to run
+# Track what needs to run
+SHOULD_FORMAT_TF=false
 SHOULD_EXPORT=false
 SHOULD_GENERATE=false
 
+# Check if Terraform formatting needed
+if [ -n "$TERRAFORM_CHANGED" ]; then
+    printf "Terraform files changed, will format\n"
+    SHOULD_FORMAT_TF=true
+fi
+
+# Check if API generation needed
 if [ -n "$BACKEND_CHANGED" ] || [ -n "$FORCE_CODEGEN" ]; then
     printf "Backend Python files changed, will regenerate OpenAPI spec\n"
     SHOULD_EXPORT=true
@@ -40,9 +49,9 @@ elif [ -n "$OPENAPI_CHANGED" ]; then
     SHOULD_GENERATE=true
 fi
 
-# Early exit if nothing to do (fast path - 95% of commits)
-if [ "$SHOULD_EXPORT" = false ] && [ "$SHOULD_GENERATE" = false ]; then
-    printf "No backend changes detected, skipping OpenAPI sync\n"
+# Early exit if nothing to do (fast path)
+if [ "$SHOULD_FORMAT_TF" = false ] && [ "$SHOULD_EXPORT" = false ] && [ "$SHOULD_GENERATE" = false ]; then
+    printf "No changes requiring pre-commit processing\n"
     exit 0
 fi
 
