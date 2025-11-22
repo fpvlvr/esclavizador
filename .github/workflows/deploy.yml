@@ -12,33 +12,10 @@ env:
   GCP_REGION: us-central1
 
 jobs:
-  # Detect what changed to optimize deployments
-  detect-changes:
-    name: Detect Changes
-    runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Detect changed paths
-        uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            backend:
-              - 'backend/**'
-            frontend:
-              - 'frontend/esclavizador/**'
-
-  # Deploy backend code via gcloud (fast path)
+  # Deploy backend code via gcloud
   deploy-backend:
     name: Deploy Backend (gcloud)
-    needs: detect-changes
-    if: needs.detect-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
 
     permissions:
@@ -92,13 +69,6 @@ jobs:
   # Deploy frontend to Firebase Hosting
   deploy-frontend:
     name: Deploy Frontend (Firebase)
-    needs: [detect-changes, deploy-backend]
-    # Run if frontend changed OR if backend was deployed (may have new API)
-    if: |
-      always() &&
-      (needs.detect-changes.outputs.frontend == 'true' ||
-       needs.deploy-backend.result == 'success') &&
-      needs.detect-changes.result == 'success'
     runs-on: ubuntu-latest
 
     permissions:
