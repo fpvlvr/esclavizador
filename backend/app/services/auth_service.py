@@ -10,11 +10,14 @@ Handles:
 ORM-free service - works with TypedDict entities only.
 """
 
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Tuple
 import jwt
 from fastapi import HTTPException, status
 from tortoise.transactions import in_transaction
+
+logger = logging.getLogger(__name__)
 
 from app.domain.constants import UserRole
 from app.domain.entities import UserData
@@ -102,9 +105,14 @@ class AuthService:
                 return user_data
 
         except Exception as e:
-            # Re-raise with more context
-            import traceback
-            traceback.print_exc()
+            logger.error(
+                f"Failed to create user and organization: {str(e)}",
+                exc_info=e,
+                extra={
+                    "email": email,
+                    "organization_name": organization_name,
+                },
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Failed to create user and organization: {str(e)}"
