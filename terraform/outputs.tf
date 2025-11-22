@@ -60,12 +60,16 @@ output "github_actions_service_account_email" {
 
 output "workload_identity_provider" {
   value = var.github_repository != "" ? (
-    "projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/github-actions-pool/providers/github-oidc-provider"
+    "projects/${data.google_project.project[0].number}/locations/global/workloadIdentityPools/github-actions-pool/providers/github-oidc-provider"
   ) : null
   description = "Workload Identity Provider for GitHub Actions (use in GitHub Secrets)"
 }
 
-# Get project number for WIF output
+# Get project number for WIF output (only if WIF is enabled)
 data "google_project" "project" {
+  count      = var.github_repository != "" ? 1 : 0
   project_id = var.gcp_project_id
+
+  # Ensure Cloud Resource Manager API is enabled before reading project data
+  depends_on = [google_project_service.cloudresourcemanager]
 }
