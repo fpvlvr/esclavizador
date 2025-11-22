@@ -1,11 +1,11 @@
 name: Deploy
 
 on:
-  paths:
+  push:
+    paths:
     - 'backend/**'
     - 'frontend/**'
     - 'github/workflows/**'
-  push:
     branches:
       - main
   workflow_dispatch:
