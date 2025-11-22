@@ -14,7 +14,6 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
-      terraform: ${{ steps.filter.outputs.terraform }}
 
     steps:
       - name: Checkout code
@@ -29,48 +28,12 @@ jobs:
               - 'backend/**'
             frontend:
               - 'frontend/esclavizador/**'
-            terraform:
-              - 'terraform/**'
-
-  # Deploy infrastructure changes via Terraform
-  deploy-infrastructure:
-    name: Deploy Infrastructure (Terraform)
-    needs: detect-changes
-    if: needs.detect-changes.outputs.terraform == 'true'
-    runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: terraform
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
-
-      - name: Terraform Init
-        run: terraform init -reconfigure
-
-      - name: Terraform Plan
-        run: terraform plan -no-color
-
-      - name: Terraform Apply
-        run: terraform apply -auto-approve -no-color
 
   # Deploy backend code via gcloud (fast path)
   deploy-backend:
     name: Deploy Backend (gcloud)
-    needs: [detect-changes, deploy-infrastructure]
-    # Run if backend changed OR if infrastructure was deployed (may affect backend)
-    if: |
-      always() &&
-      (needs.detect-changes.outputs.backend == 'true' ||
-       needs.deploy-infrastructure.result == 'success') &&
-      needs.detect-changes.result == 'success'
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
 
     permissions:
@@ -124,7 +87,7 @@ jobs:
   deploy-frontend:
     name: Deploy Frontend (Firebase)
     needs: [detect-changes, deploy-backend]
-    # Run if frontend changed OR if backend was deployed (may have new API URL)
+    # Run if frontend changed OR if backend was deployed (may have new API)
     if: |
       always() &&
       (needs.detect-changes.outputs.frontend == 'true' ||
@@ -163,25 +126,3 @@ jobs:
           channelId: live
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
           entryPoint: frontend/esclavizador
-
-  # Summary of deployment
-  deployment-summary:
-    name: Deployment Summary
-    needs: [detect-changes, deploy-infrastructure, deploy-backend, deploy-frontend]
-    if: always()
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Print deployment summary
-        run: |
-          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Changes Detected:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Backend: ${{ needs.detect-changes.outputs.backend }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Frontend: ${{ needs.detect-changes.outputs.frontend }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Terraform: ${{ needs.detect-changes.outputs.terraform }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Deployment Results:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Infrastructure: ${{ needs.deploy-infrastructure.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Backend: ${{ needs.deploy-backend.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Frontend: ${{ needs.deploy-frontend.result }}" >> $GITHUB_STEP_SUMMARY
