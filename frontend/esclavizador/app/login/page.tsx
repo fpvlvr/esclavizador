@@ -7,6 +7,7 @@ import { z } from "zod"
 import { Clock } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -89,6 +90,19 @@ export default function LoginPage() {
     }
   }
 
+  const handleDemoLogin = async () => {
+    setIsLoggingIn(true)
+    try {
+      await login("mike.oxlong@sample.org", "SecurePass123!")
+      toast.success("Logged in with demo account")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Demo login failed"
+      toast.error(message)
+    } finally {
+      setIsLoggingIn(false)
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -98,7 +112,6 @@ export default function LoginPage() {
             <span className="text-2xl font-semibold">Esclavizador</span>
           </div>
           <CardTitle className="text-2xl">Welcome back</CardTitle>
-          <CardDescription>Enter your credentials to access your account</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={loginForm.handleSubmit(handleLoginSubmit)} className="space-y-4">
@@ -161,9 +174,8 @@ export default function LoginPage() {
                   </DialogContent>
                 </Dialog>
               </div>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 placeholder="••••••••"
                 {...loginForm.register("password")}
               />
@@ -208,9 +220,8 @@ export default function LoginPage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="register-password">Password</Label>
-                      <Input
+                      <PasswordInput
                         id="register-password"
-                        type="password"
                         placeholder="••••••••"
                         {...registerForm.register("password")}
                       />
@@ -240,6 +251,25 @@ export default function LoginPage() {
                   </form>
                 </DialogContent>
               </Dialog>
+            </div>
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">or</span>
+              </div>
+            </div>
+            <div className="text-center">
+              <Button
+                type="button"
+                variant="link"
+                className="text-sm font-normal"
+                onClick={handleDemoLogin}
+                disabled={isLoggingIn}
+              >
+                Explore with sample organization
+              </Button>
             </div>
           </form>
         </CardContent>
