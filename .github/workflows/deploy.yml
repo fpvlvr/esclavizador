@@ -65,7 +65,8 @@ jobs:
       - name: Build backend Docker image
         working-directory: backend
         run: |
-          docker build -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7} .
+          docker build --platform linux/amd64 \
+            -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7} .
           docker tag ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/esclavizador/backend:${GITHUB_SHA:0:7} \
                      ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/esclavizador/backend:latest
 
